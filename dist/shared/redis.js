@@ -19,31 +19,31 @@ const logger_1 = require("./logger");
 const redisClient = (0, redis_1.createClient)({
     // url: config.redis.url
     // password: process.env.REDIS_PASSWORD,
-    username: 'default',
-    password: 'ClYsS2MuKXp7su0HBbjlRGOZ3HbxzzOP',
+    username: config_1.default.redis.userName,
+    password: config_1.default.redis.password,
     socket: {
-        host: 'redis-10221.c212.ap-south-1-1.ec2.redns.redis-cloud.com',
-        port: 10221,
+        host: config_1.default.redis.host,
+        port: Number(config_1.default.redis.port),
     },
 });
 const redisPubClient = (0, redis_1.createClient)({
     // url: config.redis.url
     // password: process.env.REDIS_PASSWORD,
-    username: 'default',
-    password: 'ClYsS2MuKXp7su0HBbjlRGOZ3HbxzzOP',
+    username: config_1.default.redis.userName,
+    password: config_1.default.redis.password,
     socket: {
-        host: 'redis-10221.c212.ap-south-1-1.ec2.redns.redis-cloud.com',
-        port: 10221,
+        host: config_1.default.redis.host,
+        port: Number(config_1.default.redis.port),
     },
 });
 const redisSubClient = (0, redis_1.createClient)({
     // url: config.redis.url
     // password: process.env.REDIS_PASSWORD,
-    username: 'default',
-    password: 'ClYsS2MuKXp7su0HBbjlRGOZ3HbxzzOP',
+    username: config_1.default.redis.userName,
+    password: config_1.default.redis.password,
     socket: {
-        host: 'redis-10221.c212.ap-south-1-1.ec2.redns.redis-cloud.com',
-        port: 10221,
+        host: config_1.default.redis.host,
+        port: Number(config_1.default.redis.port),
     },
 });
 redisClient.on('connect', () => {
