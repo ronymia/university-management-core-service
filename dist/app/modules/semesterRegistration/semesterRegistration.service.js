@@ -114,6 +114,9 @@ const getAllSemesterRegistration = (filters, paginationOptions) => __awaiter(voi
             [sortBy]: sortOrder,
         },
         where: whereCondition,
+        include: {
+            academicSemester: true,
+        },
     });
     // TOTAL COUNT
     const total = yield prisma_1.prisma.semesterRegistration.count({
