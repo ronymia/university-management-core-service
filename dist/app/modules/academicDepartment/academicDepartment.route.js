@@ -79,7 +79,7 @@ router
  */
 router
     .route('/')
-    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN, user_1.ENUM_USER_ROLE.FACULTY), academicDepartment_controller_1.AcademicDepartmentController.getAllAcademicDepartments);
+    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN, user_1.ENUM_USER_ROLE.FACULTY, user_1.ENUM_USER_ROLE.STUDENT), academicDepartment_controller_1.AcademicDepartmentController.getAllAcademicDepartments);
 // GET BY ID
 /**
  * @swagger
@@ -106,7 +106,7 @@ router
  */
 router
     .route('/:id')
-    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN, user_1.ENUM_USER_ROLE.FACULTY), academicDepartment_controller_1.AcademicDepartmentController.getSingleAcademicDepartment);
+    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN, user_1.ENUM_USER_ROLE.FACULTY, user_1.ENUM_USER_ROLE.STUDENT), academicDepartment_controller_1.AcademicDepartmentController.getSingleAcademicDepartment);
 // UPDATE
 /**
  * @swagger
