@@ -117,7 +117,12 @@ const getAllOfferedCourseSections = (filters, paginationOptions) => __awaiter(vo
         },
         where: whereCondition,
         include: {
-            offeredCourse: true,
+            offeredCourse: {
+                include: {
+                    course: true,
+                    academicDepartment: true,
+                },
+            },
             semesterRegistration: true,
         },
     });
