@@ -34,6 +34,7 @@ const studentSemesterRegistrationCourse_service_1 = require("../studentSemesterR
 const asyncForEach_1 = __importDefault(require("../../../shared/asyncForEach"));
 const studentSemesterPayment_service_1 = require("../studentSemesterPayment/studentSemesterPayment.service");
 const studentEnrolledCourseMark_service_1 = require("../studentEnrolledCourseMark/studentEnrolledCourseMark.service");
+const semesterRegistration_utils_1 = require("./semesterRegistration.utils");
 // CREATE SEMESTER REGISTRATION
 const createSemesterRegistration = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     // CHECK IF SEMESTER REGISTRATION EXISTS
@@ -147,12 +148,12 @@ const updateSemesterRegistration = (id, payload) => __awaiter(void 0, void 0, vo
     //
     if (payload.status &&
         isExist.status === client_1.SemesterRegistrationStatus.UPCOMING &&
-        payload.status === client_1.SemesterRegistrationStatus.ONGOING) {
+        payload.status !== client_1.SemesterRegistrationStatus.ONGOING) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, `Can only change status from ${client_1.SemesterRegistrationStatus.UPCOMING} To ${client_1.SemesterRegistrationStatus.ONGOING}`);
     }
     else if (payload.status &&
         isExist.status === client_1.SemesterRegistrationStatus.ONGOING &&
-        payload.status === client_1.SemesterRegistrationStatus.ENDED) {
+        payload.status !== client_1.SemesterRegistrationStatus.ENDED) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, `Can change status from ${client_1.SemesterRegistrationStatus.ONGOING} to ${client_1.SemesterRegistrationStatus.ENDED}`);
     }
     // UPDATE
@@ -333,6 +334,7 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
             id,
         },
     });
+    console.log({ getAcademicSemester });
     if (!getAcademicSemester) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester not found');
     }
@@ -344,12 +346,9 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
             academicSemesterId: getAcademicSemester.id,
         },
     });
-    // if (getSemesterRegistration?.status !== SemesterRegistrationStatus.ENDED) {
-    //   throw new ApiError(
-    //     httpStatus.BAD_REQUEST,
-    //     'Semester registration is not ended'
-    //   );
-    // }
+    if ((getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.status) !== client_1.SemesterRegistrationStatus.ENDED) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester registration is not ended');
+    }
     yield prisma_1.prisma.$transaction((transactionClient) => __awaiter(void 0, void 0, void 0, function* () {
         // UPDATE SEMESTER REGISTRATION
         yield transactionClient.academicSemester.updateMany({
@@ -436,6 +435,148 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
     }));
     return { message: `Semester started successfully` };
 });
+const startMyRegistration = (authUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    const studentInfo = yield prisma_1.prisma.student.findFirst({
+        where: {
+            studentId: authUserId,
+        },
+    });
+    if (!studentInfo) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Student Info not found!');
+    }
+    const semesterRegistrationInfo = yield prisma_1.prisma.semesterRegistration.findFirst({
+        where: {
+            status: {
+                in: [
+                    client_1.SemesterRegistrationStatus.ONGOING,
+                    client_1.SemesterRegistrationStatus.UPCOMING,
+                ],
+            },
+        },
+    });
+    if ((semesterRegistrationInfo === null || semesterRegistrationInfo === void 0 ? void 0 : semesterRegistrationInfo.status) === client_1.SemesterRegistrationStatus.UPCOMING) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Registration is not started yet');
+    }
+    let studentRegistration = yield prisma_1.prisma.studentSemesterRegistration.findFirst({
+        where: {
+            student: {
+                id: studentInfo === null || studentInfo === void 0 ? void 0 : studentInfo.id,
+            },
+            semesterRegistration: {
+                id: semesterRegistrationInfo === null || semesterRegistrationInfo === void 0 ? void 0 : semesterRegistrationInfo.id,
+            },
+        },
+    });
+    if (!studentRegistration) {
+        studentRegistration = yield prisma_1.prisma.studentSemesterRegistration.create({
+            data: {
+                student: {
+                    connect: {
+                        id: studentInfo === null || studentInfo === void 0 ? void 0 : studentInfo.id,
+                    },
+                },
+                semesterRegistration: {
+                    connect: {
+                        id: semesterRegistrationInfo === null || semesterRegistrationInfo === void 0 ? void 0 : semesterRegistrationInfo.id,
+                    },
+                },
+            },
+        });
+    }
+    return {
+        semesterRegistration: semesterRegistrationInfo,
+        studentSemesterRegistration: studentRegistration,
+    };
+});
+const getMySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    const student = yield prisma_1.prisma.student.findFirst({
+        where: {
+            studentId: authUserId,
+        },
+    });
+    console.log({ student });
+    const semesterRegistration = yield prisma_1.prisma.semesterRegistration.findFirst({
+        where: {
+            status: {
+                in: [
+                    client_1.SemesterRegistrationStatus.UPCOMING,
+                    client_1.SemesterRegistrationStatus.ONGOING,
+                ],
+            },
+        },
+        include: {
+            academicSemester: true,
+        },
+    });
+    console.log({ semesterRegistration });
+    if (!semesterRegistration) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'No semester registration not found!');
+    }
+    const studentCompletedCourse = yield prisma_1.prisma.studentEnrolledCourse.findMany({
+        where: {
+            status: client_1.StudentEnrolledCourseStatus.COMPLETED,
+            student: {
+                id: student === null || student === void 0 ? void 0 : student.id,
+            },
+        },
+        include: {
+            course: true,
+        },
+    });
+    const studentCurrentSemesterTakenCourse = yield prisma_1.prisma.studentSemesterRegistrationCourse.findMany({
+        where: {
+            student: {
+                id: student === null || student === void 0 ? void 0 : student.id,
+            },
+            semesterRegistration: {
+                id: semesterRegistration === null || semesterRegistration === void 0 ? void 0 : semesterRegistration.id,
+            },
+        },
+        include: {
+            offeredCourse: true,
+            offeredCourseSection: true,
+        },
+    });
+    console.log({ studentCurrentSemesterTakenCourse });
+    const offeredCourse = yield prisma_1.prisma.offeredCourse.findMany({
+        where: {
+            semesterRegistration: {
+                id: semesterRegistration.id,
+            },
+            academicDepartment: {
+                id: student === null || student === void 0 ? void 0 : student.academicDepartmentId,
+            },
+        },
+        include: {
+            course: {
+                include: {
+                    preRequisite: {
+                        include: {
+                            preRequisite: true,
+                        },
+                    },
+                },
+            },
+            offeredCourseSections: {
+                include: {
+                    offeredCourseClassSchedules: {
+                        include: {
+                            room: {
+                                include: {
+                                    building: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+    //console.log("Offered course: ", offeredCourse)
+    const availableCourses = semesterRegistration_utils_1.SemesterRegistrationUtils.getAvailableCourses(offeredCourse, studentCompletedCourse, studentCurrentSemesterTakenCourse);
+    console.log({ availableCourses });
+    return availableCourses;
+});
 // EXPORT
 exports.SemesterRegistrationService = {
     createSemesterRegistration,
@@ -449,4 +590,6 @@ exports.SemesterRegistrationService = {
     confirmMyRegistration,
     getMyRegistration,
     startNewSemester,
+    startMyRegistration,
+    getMySemesterRegCourses,
 };

@@ -16,8 +16,9 @@ const studentEnrolledCourseMark_utils_1 = require("./studentEnrolledCourseMark.u
 const redis_1 = require("../../../shared/redis");
 const studentEnrolledCourseMark_constant_1 = require("./studentEnrolledCourseMark.constant");
 // CREATE STUDENT ENROLLED COURSE MARK
-const createStudentEnrolledCourseDefaultMark = (prismaClient, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const getStudentMidtermCourseMark = yield prismaClient.studentEnrolledCourseMark.findFirst({
+const createStudentEnrolledCourseDefaultMark = (prismaClient, // enforce type
+payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const midtermMark = yield prismaClient.studentEnrolledCourseMark.findFirst({
         where: {
             studentId: payload.studentId,
             academicSemesterId: payload.academicSemesterId,
@@ -25,19 +26,20 @@ const createStudentEnrolledCourseDefaultMark = (prismaClient, payload) => __awai
             examType: client_1.ExamType.MIDTERM,
         },
     });
-    if (!getStudentMidtermCourseMark) {
+    if (!midtermMark) {
         yield prismaClient.studentEnrolledCourseMark.create({
             data: Object.assign(Object.assign({}, payload), { examType: client_1.ExamType.MIDTERM }),
         });
     }
-    const getStudentFinalCourseMark = yield prismaClient.studentEnrolledCourseMark.findFirst({
+    const finalMark = yield prismaClient.studentEnrolledCourseMark.findFirst({
         where: {
             studentId: payload.studentId,
+            academicSemesterId: payload.academicSemesterId,
             studentEnrolledCourseId: payload.studentEnrolledCourseId,
             examType: client_1.ExamType.FINAL,
         },
     });
-    if (!getStudentFinalCourseMark) {
+    if (!finalMark) {
         yield prismaClient.studentEnrolledCourseMark.create({
             data: Object.assign(Object.assign({}, payload), { examType: client_1.ExamType.FINAL }),
         });

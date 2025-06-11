@@ -84,6 +84,11 @@ const getAllStudents = (filters, paginationOptions) => __awaiter(void 0, void 0,
             [sortBy]: sortOrder,
         },
         where: whereCondition,
+        include: {
+            academicDepartment: true,
+            academicFaculty: true,
+            academicSemester: true,
+        },
     });
     const total = yield prisma_1.prisma.student.count();
     return {
