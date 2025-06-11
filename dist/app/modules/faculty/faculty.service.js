@@ -86,6 +86,9 @@ const getAllFaculties = (filters, paginationOptions) => __awaiter(void 0, void 0
                     course: true,
                 },
             },
+            academicDepartment: true,
+            academicFaculty: true,
+            offeredCourseClassSchedules: true,
         },
     });
     const total = yield prisma_1.prisma.faculty.count();

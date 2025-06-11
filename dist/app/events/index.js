@@ -13,13 +13,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 // import initAdminEvent from '../modules/admin/admin.event';
+const admin_event_1 = __importDefault(require("../modules/admin/admin.event"));
 const faculty_event_1 = __importDefault(require("../modules/faculty/faculty.event"));
 const student_event_1 = __importDefault(require("../modules/student/student.event"));
 const subscribeToEvents = () => __awaiter(void 0, void 0, void 0, function* () {
     // STUDENT
     yield (0, student_event_1.default)();
     // ADMIN
-    // await initAdminEvent();
+    yield (0, admin_event_1.default)();
     // FACULTY
     yield (0, faculty_event_1.default)();
 });

@@ -16,6 +16,7 @@ const initAdminEvent = () => __awaiter(void 0, void 0, void 0, function* () {
     // CREATE ADMIN FROM EVENT
     yield redis_1.RedisClient.subscribe(admin_constant_1.EVENT_ADMIN_CREATED, (event) => __awaiter(void 0, void 0, void 0, function* () {
         const admin = JSON.parse(event);
+        console.log('event', { admin });
         const adminData = {
             adminId: admin.id,
             firstName: admin.name.firstName,
