@@ -372,6 +372,15 @@ const createStudentFromEvent = (event) => __awaiter(void 0, void 0, void 0, func
 });
 // UPDATE STUDENT FROM EVENT
 const updateStudentFromEvent = (event) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log('event', event);
+    const getStudent = yield prisma_1.prisma.student.findUnique({
+        where: {
+            studentId: event.studentId,
+        },
+    });
+    if (!getStudent) {
+        yield createStudent(event);
+    }
     yield updateStudent(event.studentId, event);
 });
 // DELETE STUDENT FROM EVENT

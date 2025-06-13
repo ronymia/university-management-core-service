@@ -99,6 +99,13 @@ const getAllAcademicFaculties = (filters, paginationOptions) => __awaiter(void 0
             [sortBy]: sortOrder,
         },
         where: whereCondition,
+        include: {
+            academicDepartments: {
+                include: {
+                    academicFaculty: true,
+                },
+            },
+        },
     });
     // GET TOTAL COUNT
     const totalCount = yield prisma_1.prisma.academicFaculty.count();

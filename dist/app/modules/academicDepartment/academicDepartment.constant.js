@@ -5,6 +5,7 @@ exports.academicDepartmentSearchableFields = ['title'];
 exports.academicDepartmentFilterableFields = [
     'searchTerm',
     'title',
+    'academicFacultyId',
 ];
 exports.EVENT_ACADEMIC_DEPARTMENT_CREATED = 'academic-department.created';
 exports.EVENT_ACADEMIC_DEPARTMENT_UPDATED = 'academic-department.updated';

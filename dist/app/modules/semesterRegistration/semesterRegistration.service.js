@@ -290,7 +290,7 @@ const confirmMyRegistration = (_c) => __awaiter(void 0, [_c], void 0, function* 
             id: studentSemesterRegistration === null || studentSemesterRegistration === void 0 ? void 0 : studentSemesterRegistration.id,
         },
         data: {
-            isConfirm: true,
+            isConfirmed: true,
         },
         include: {
             student: true,
@@ -328,30 +328,25 @@ const getMyRegistration = (_d) => __awaiter(void 0, [_d], void 0, function* ({ a
 });
 // START NEW SEMESTER
 const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    // GET ACADEMIC SEMESTER
-    const getAcademicSemester = yield prisma_1.prisma.academicSemester.findUnique({
+    const semesterRegistration = yield prisma_1.prisma.semesterRegistration.findUnique({
         where: {
             id,
         },
-    });
-    console.log({ getAcademicSemester });
-    if (!getAcademicSemester) {
-        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester not found');
-    }
-    if (getAcademicSemester.isCurrent) {
-        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Current semester registration is already started');
-    }
-    const getSemesterRegistration = yield prisma_1.prisma.semesterRegistration.findFirst({
-        where: {
-            academicSemesterId: getAcademicSemester.id,
+        include: {
+            academicSemester: true,
         },
     });
-    if ((getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.status) !== client_1.SemesterRegistrationStatus.ENDED) {
-        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester registration is not ended');
+    if (!semesterRegistration) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester Registration Not found!');
     }
-    yield prisma_1.prisma.$transaction((transactionClient) => __awaiter(void 0, void 0, void 0, function* () {
-        // UPDATE SEMESTER REGISTRATION
-        yield transactionClient.academicSemester.updateMany({
+    if (semesterRegistration.status !== client_1.SemesterRegistrationStatus.ENDED) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester Registration is not ended yet!');
+    }
+    if (semesterRegistration.academicSemester.isCurrent) {
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Semester is already started!');
+    }
+    yield prisma_1.prisma.$transaction((prismaTransactionClient) => __awaiter(void 0, void 0, void 0, function* () {
+        yield prismaTransactionClient.academicSemester.updateMany({
             where: {
                 isCurrent: true,
             },
@@ -359,29 +354,39 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
                 isCurrent: false,
             },
         });
-        // UPDATE SEMESTER REGISTRATION
-        yield transactionClient.academicSemester.update({
+        yield prismaTransactionClient.academicSemester.update({
             where: {
-                id,
+                id: semesterRegistration.academicSemesterId,
             },
             data: {
                 isCurrent: true,
             },
-            include: {
-                semesterRegistrations: true,
-            },
         });
-        const studentSemesterRegistration = yield transactionClient.studentSemesterRegistration.findMany({
+        const studentSemesterRegistrations = yield prisma_1.prisma.studentSemesterRegistration.findMany({
             where: {
-                semesterRegistrationId: getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.id,
-                isConfirm: true,
+                semesterRegistration: {
+                    id,
+                },
+                isConfirmed: true,
             },
         });
-        yield (0, asyncForEach_1.default)(studentSemesterRegistration, (studentSemesterReg) => __awaiter(void 0, void 0, void 0, function* () {
-            const studentSemesterRegistrationCourses = yield transactionClient.studentSemesterRegistrationCourse.findMany({
+        yield (0, asyncForEach_1.default)(studentSemesterRegistrations, (studentSemReg) => __awaiter(void 0, void 0, void 0, function* () {
+            if (studentSemReg.totalCreditsTaken) {
+                const totalSemesterPaymentAmount = studentSemReg.totalCreditsTaken * 5000;
+                yield studentSemesterPayment_service_1.StudentSemesterPaymentService.createSemesterPayment(prismaTransactionClient, {
+                    studentId: studentSemReg.studentId,
+                    academicSemesterId: semesterRegistration.academicSemesterId,
+                    totalPaymentAmount: totalSemesterPaymentAmount,
+                });
+            }
+            const studentSemesterRegistrationCourses = yield prismaTransactionClient.studentSemesterRegistrationCourse.findMany({
                 where: {
-                    semesterRegistrationId: getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.id,
-                    studentId: studentSemesterReg.studentId,
+                    semesterRegistration: {
+                        id,
+                    },
+                    student: {
+                        id: studentSemReg.studentId,
+                    },
                 },
                 include: {
                     offeredCourse: {
@@ -391,49 +396,41 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
                     },
                 },
             });
-            // UPDATE STUDENT SEMESTER REGISTRATION
-            yield (0, asyncForEach_1.default)(studentSemesterRegistrationCourses, (studentSemesterRegCourse) => __awaiter(void 0, void 0, void 0, function* () {
-                // SEMESTER PAYMENT
-                if (studentSemesterReg.totalCreditsTaken &&
-                    (getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.academicSemesterId)) {
-                    const totalPaymentAmount = studentSemesterReg.totalCreditsTaken * 500;
-                    yield studentSemesterPayment_service_1.StudentSemesterPaymentService.createSemesterPayment(transactionClient, {
-                        studentId: studentSemesterReg.studentId,
-                        academicSemesterId: getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.academicSemesterId,
-                        totalPaymentAmount: totalPaymentAmount,
-                    });
-                }
-                // CHECK IF STUDENT ENROLLED COURSE EXISTS
-                const studentEnrolledCourse = yield transactionClient.studentEnrolledCourse.findFirst({
+            yield (0, asyncForEach_1.default)(studentSemesterRegistrationCourses, (item) => __awaiter(void 0, void 0, void 0, function* () {
+                const isExistEnrolledData = yield prismaTransactionClient.studentEnrolledCourse.findFirst({
                     where: {
-                        studentId: studentSemesterReg.studentId,
-                        courseId: studentSemesterRegCourse.offeredCourse.course.id,
-                        academicSemesterId: getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.academicSemesterId,
+                        student: { id: item.studentId },
+                        course: { id: item.offeredCourse.courseId },
+                        academicSemester: {
+                            id: semesterRegistration.academicSemesterId,
+                        },
                     },
                 });
-                if (!studentEnrolledCourse &&
-                    (getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.academicSemesterId)) {
-                    const studentEnrolledCourseData = {
-                        studentId: studentSemesterReg.studentId,
-                        courseId: studentSemesterRegCourse.offeredCourse.course.id,
-                        academicSemesterId: getSemesterRegistration === null || getSemesterRegistration === void 0 ? void 0 : getSemesterRegistration.academicSemesterId,
+                // console.log({ isExistEnrolledData });
+                if (!isExistEnrolledData) {
+                    const enrolledCourseData = {
+                        studentId: item.studentId,
+                        courseId: item.offeredCourse.courseId,
+                        academicSemesterId: semesterRegistration.academicSemesterId,
                     };
-                    // STUDENT ENROLLED INTO COURSE
-                    const studentEnrolledIntoCourse = yield transactionClient.studentEnrolledCourse.create({
-                        data: studentEnrolledCourseData,
+                    // console.log({ enrolledCourseData });
+                    const studentEnrolledCourseData = yield prismaTransactionClient.studentEnrolledCourse.create({
+                        data: enrolledCourseData,
                     });
-                    // UPDATE DEFAULT MARK
-                    yield studentEnrolledCourseMark_service_1.StudentEnrolledCourseMarkService.createStudentEnrolledCourseDefaultMark(transactionClient, {
-                        academicSemesterId: studentEnrolledIntoCourse === null || studentEnrolledIntoCourse === void 0 ? void 0 : studentEnrolledIntoCourse.academicSemesterId,
-                        studentId: studentEnrolledIntoCourse.studentId,
-                        studentEnrolledCourseId: studentEnrolledIntoCourse.id,
+                    yield studentEnrolledCourseMark_service_1.StudentEnrolledCourseMarkService.createStudentEnrolledCourseDefaultMark(prismaTransactionClient, {
+                        studentId: item.studentId,
+                        studentEnrolledCourseId: studentEnrolledCourseData.id,
+                        academicSemesterId: semesterRegistration.academicSemesterId,
                     });
                 }
             }));
-            //
         }));
-    }));
-    return { message: `Semester started successfully` };
+    }), {
+        timeout: 10000,
+    });
+    return {
+        message: 'Semester started successfully!',
+    };
 });
 const startMyRegistration = (authUserId) => __awaiter(void 0, void 0, void 0, function* () {
     const studentInfo = yield prisma_1.prisma.student.findFirst({

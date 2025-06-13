@@ -108,6 +108,7 @@ const getAllAcademicDepartments = (filters, paginationOptions) => __awaiter(void
             academicFaculty: true,
             faculties: true,
             students: true,
+            offeredCourses: true,
         },
     });
     // GET TOTAL COUNT
