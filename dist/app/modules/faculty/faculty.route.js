@@ -11,18 +11,13 @@ const validateRequest_1 = __importDefault(require("../../middlewares/validateReq
 const faculty_controller_1 = require("./faculty.controller");
 const faculty_validation_1 = require("./faculty.validation");
 const router = express_1.default.Router();
-/**
- * GET /faculties
- * Retrieve all Faculties
- *
- * @returns {Promise<void>}
- */
+router
+    .route('/my-courses')
+    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN, user_1.ENUM_USER_ROLE.FACULTY), faculty_controller_1.FacultyController.myCourses);
+router.get('/my-course-students', (0, auth_1.default)(user_1.ENUM_USER_ROLE.FACULTY), faculty_controller_1.FacultyController.getMyCourseStudents);
 router
     .route('/')
     .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), faculty_controller_1.FacultyController.getAllFaculties);
-router
-    .route('/my-courses')
-    .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), faculty_controller_1.FacultyController.myCourses);
 /**
  * GET /faculties/:id
  * Retrieve a single Faculty by ID
@@ -106,5 +101,5 @@ router
  */
 router
     .route('/:id/remove-courses')
-    .delete((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), (0, validateRequest_1.default)(faculty_validation_1.FacultyValidation.assignOrRemoveCoursesSchema), faculty_controller_1.FacultyController.removeCourses);
+    .patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), (0, validateRequest_1.default)(faculty_validation_1.FacultyValidation.assignOrRemoveCoursesSchema), faculty_controller_1.FacultyController.removeCourses);
 exports.FacultyRoutes = router;

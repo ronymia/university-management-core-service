@@ -47,12 +47,12 @@ payload) => __awaiter(void 0, void 0, void 0, function* () {
 });
 // UPDATE STUDENT ENROLLED COURSE MARK
 const updateStudentEnrolledCourseMark = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const { studentId, academicSemesterId, courseId, examType, mark } = payload;
+    const { studentId, academicSemesterId, courseId, examType, marks } = payload;
     // CHECK IF THE STUDENT ENROLLED COURSE MARK EXISTS
     const getStudentEnrolledCourseDefaultMark = yield prisma_1.prisma.studentEnrolledCourseMark.findFirst({
         where: {
             student: {
-                id: studentId,
+                studentId: studentId,
             },
             academicSemester: { id: academicSemesterId },
             studentEnrolledCourse: {
@@ -63,16 +63,17 @@ const updateStudentEnrolledCourseMark = (payload) => __awaiter(void 0, void 0, v
             examType,
         },
     });
+    // console.log({ getStudentEnrolledCourseDefaultMark });
     if (!getStudentEnrolledCourseDefaultMark) {
         throw new Error('Student enrolled course mark not found');
     }
     // GET GRADE FROM CALCULATE MARK FUNCTION
     // CHECK IF THE MARK IS VALID
-    const { grade } = yield studentEnrolledCourseMark_utils_1.StudentEnrolledCourseMarkUtils.getGradeFromMark(mark);
+    const { grade } = yield studentEnrolledCourseMark_utils_1.StudentEnrolledCourseMarkUtils.getGradeFromMark(marks);
     // UPDATE
     const updatedMark = yield prisma_1.prisma.studentEnrolledCourseMark.update({
         where: { id: getStudentEnrolledCourseDefaultMark.id },
-        data: { mark, grade },
+        data: { marks, grade },
     });
     if (!updatedMark) {
         throw new Error('Failed to update student enrolled course mark');
@@ -90,14 +91,22 @@ const updateStudentFinalMark = (payload) => __awaiter(void 0, void 0, void 0, fu
     const { studentId, academicSemesterId, courseId } = payload;
     // CHECK IF THE STUDENT ENROLLED COURSE MARK EXISTS
     const studentEnrolledCourse = yield prisma_1.prisma.studentEnrolledCourse.findFirst({
-        where: { studentId, academicSemesterId, courseId },
+        where: {
+            student: {
+                studentId: studentId,
+            },
+            academicSemesterId,
+            courseId,
+        },
     });
     if (!studentEnrolledCourse) {
         throw new Error('Student enrolled course not found');
     }
     const studentEnrolledCourseMarks = yield prisma_1.prisma.studentEnrolledCourseMark.findMany({
         where: {
-            studentId,
+            student: {
+                studentId: studentId,
+            },
             academicSemesterId,
             studentEnrolledCourseId: studentEnrolledCourse.id,
         },
@@ -105,16 +114,22 @@ const updateStudentFinalMark = (payload) => __awaiter(void 0, void 0, void 0, fu
     if (studentEnrolledCourseMarks.length === 0) {
         throw new Error('Student enrolled course mark not found');
     }
-    const midtermMarks = ((_a = studentEnrolledCourseMarks.find(item => item.examType === client_1.ExamType.MIDTERM)) === null || _a === void 0 ? void 0 : _a.mark) || 0;
-    const finalMarks = ((_b = studentEnrolledCourseMarks.find(item => item.examType === client_1.ExamType.FINAL)) === null || _b === void 0 ? void 0 : _b.mark) || 0;
+    const midtermMarks = ((_a = studentEnrolledCourseMarks.find(item => item.examType === client_1.ExamType.MIDTERM)) === null || _a === void 0 ? void 0 : _a.marks) || 0;
+    const finalMarks = ((_b = studentEnrolledCourseMarks.find(item => item.examType === client_1.ExamType.FINAL)) === null || _b === void 0 ? void 0 : _b.marks) || 0;
     const totalMarks = Math.ceil(midtermMarks * 0.4) + Math.ceil(finalMarks * 0.6);
+    // console.log({ midtermMarks, finalMarks, totalMarks });
     // GET GRADE FROM CALCULATE MARK FUNCTION
     // CHECK IF THE MARK IS VALID
     const { grade, points } = yield studentEnrolledCourseMark_utils_1.StudentEnrolledCourseMarkUtils.getGradeFromMark(totalMarks);
     // CHECK IF THE STUDENT ENROLLED COURSE MARK EXISTS
     const updateStudentEnrolledCourse = yield prisma_1.prisma.studentEnrolledCourse.update({
         where: { id: studentEnrolledCourse.id },
-        data: { points, grade, status: client_1.StudentEnrolledCourseStatus.COMPLETED },
+        data: {
+            points,
+            grade,
+            totalMarks,
+            status: client_1.StudentEnrolledCourseStatus.COMPLETED,
+        },
     });
     if (!updateStudentEnrolledCourse) {
         throw new Error('Failed to update student enrolled course mark');
@@ -122,7 +137,7 @@ const updateStudentFinalMark = (payload) => __awaiter(void 0, void 0, void 0, fu
     const grades = yield prisma_1.prisma.studentEnrolledCourse.findMany({
         where: {
             student: {
-                id: studentId,
+                studentId: studentId,
             },
         },
         include: {
@@ -134,7 +149,7 @@ const updateStudentFinalMark = (payload) => __awaiter(void 0, void 0, void 0, fu
     // CALCULATE CGPA
     const academicResult = yield studentEnrolledCourseMark_utils_1.StudentEnrolledCourseMarkUtils.calcGradeAndCGPA(grades);
     const studentAcademicInfo = yield prisma_1.prisma.studentAcademicInfo.findFirst({
-        where: { student: { id: studentId } },
+        where: { student: { studentId: studentId } },
     });
     if (studentAcademicInfo) {
         yield prisma_1.prisma.studentAcademicInfo.update({
@@ -151,7 +166,7 @@ const updateStudentFinalMark = (payload) => __awaiter(void 0, void 0, void 0, fu
         yield prisma_1.prisma.studentAcademicInfo.create({
             data: {
                 student: {
-                    connect: { id: studentId },
+                    connect: { studentId: studentId },
                 },
                 cgpa: academicResult.cgpa,
                 totalCreditCompleted: academicResult.totalCreditCompleted,

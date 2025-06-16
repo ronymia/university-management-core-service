@@ -6,6 +6,7 @@ exports.roomFilterableFields = [
     'searchTerm',
     'roomNumber',
     'floor',
+    'buildingId',
 ];
 exports.EVENT_ROOM_CREATED = 'room.created';
 exports.EVENT_ROOM_UPDATED = 'room.updated';

@@ -11,33 +11,33 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentEnrolledCourseMarkUtils = void 0;
 // CALCULATE GRADE FROM MARK
-const getGradeFromMark = (mark) => __awaiter(void 0, void 0, void 0, function* () {
+const getGradeFromMark = (marks) => __awaiter(void 0, void 0, void 0, function* () {
     // DEFINE GRADE
     const result = {
         grade: '',
         points: 0,
     };
-    if (mark && mark >= 80 && mark <= 100) {
+    if (marks && marks >= 80 && marks <= 100) {
         result.grade = 'A+';
         result.points = 4.0;
     }
-    else if (mark && mark >= 70 && mark <= 79) {
+    else if (marks && marks >= 70 && marks <= 79) {
         result.grade = 'A';
         result.points = 3.5;
     }
-    else if (mark && mark >= 60 && mark <= 69) {
+    else if (marks && marks >= 60 && marks <= 69) {
         result.grade = 'A-';
         result.points = 3.0;
     }
-    else if (mark && mark >= 50 && mark <= 59) {
+    else if (marks && marks >= 50 && marks <= 59) {
         result.grade = 'B';
         result.points = 2.5;
     }
-    else if (mark && mark >= 40 && mark <= 49) {
+    else if (marks && marks >= 40 && marks <= 49) {
         result.grade = 'C';
         result.points = 2.0;
     }
-    else if (mark && mark >= 33 && mark <= 39) {
+    else if (marks && marks >= 33 && marks <= 39) {
         result.grade = 'D';
         result.points = 2.0;
     }

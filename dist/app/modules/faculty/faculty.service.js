@@ -194,30 +194,29 @@ const removeCourses = (id, payload) => __awaiter(void 0, void 0, void 0, functio
     return assignedCourses;
 });
 // MY COURSES
-const myCourses = (authUserId, filters) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!filters.academicSemesterId) {
-        const getCurrentAcademicSemester = yield prisma_1.prisma.academicSemester.findFirst({
+const myCourses = (authUser, filter) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!filter.academicSemesterId) {
+        const currentSemester = yield prisma_1.prisma.academicSemester.findFirst({
             where: {
                 isCurrent: true,
             },
         });
-        //
-        filters.academicSemesterId = getCurrentAcademicSemester === null || getCurrentAcademicSemester === void 0 ? void 0 : getCurrentAcademicSemester.id;
-        console.log({ getCurrentAcademicSemester });
+        filter.academicSemesterId = currentSemester === null || currentSemester === void 0 ? void 0 : currentSemester.id;
     }
-    //
-    const facultyCourses = yield prisma_1.prisma.offeredCourseSection.findMany({
+    const offeredCourseSections = yield prisma_1.prisma.offeredCourseSection.findMany({
         where: {
             offeredCourseClassSchedules: {
                 some: {
                     faculty: {
-                        facultyId: authUserId,
+                        facultyId: authUser.userId,
                     },
                 },
             },
             offeredCourse: {
                 semesterRegistration: {
-                    academicSemesterId: filters.academicSemesterId,
+                    academicSemester: {
+                        id: filter.academicSemesterId,
+                    },
                 },
             },
         },
@@ -225,7 +224,6 @@ const myCourses = (authUserId, filters) => __awaiter(void 0, void 0, void 0, fun
             offeredCourse: {
                 include: {
                     course: true,
-                    semesterRegistration: true,
                 },
             },
             offeredCourseClassSchedules: {
@@ -239,33 +237,97 @@ const myCourses = (authUserId, filters) => __awaiter(void 0, void 0, void 0, fun
             },
         },
     });
-    if (!facultyCourses) {
-        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'No courses found for the student');
-    }
-    const courseAndSchedules = facultyCourses.reduce((acc, obj) => {
+    const courseAndSchedule = offeredCourseSections.reduce((acc, obj) => {
+        //console.log(obj)
         const course = obj.offeredCourse.course;
         const classSchedules = obj.offeredCourseClassSchedules;
-        const existingCourse = acc.find((item) => { var _a; return ((_a = item === null || item === void 0 ? void 0 : item.course) === null || _a === void 0 ? void 0 : _a.id) === (course === null || course === void 0 ? void 0 : course.id); });
+        const existingCourse = acc.find((item) => { var _a; return ((_a = item.course) === null || _a === void 0 ? void 0 : _a.id) === (course === null || course === void 0 ? void 0 : course.id); });
         if (existingCourse) {
             existingCourse.sections.push({
                 section: obj,
-                classSchedules: classSchedules,
+                classSchedules,
             });
         }
         else {
             acc.push({
-                course: course,
+                course,
                 sections: [
                     {
                         section: obj,
-                        classSchedules: classSchedules,
+                        classSchedules,
                     },
                 ],
             });
         }
         return acc;
     }, []);
-    return courseAndSchedules;
+    return courseAndSchedule;
+});
+const getMyCourseStudents = (filters, options, authUser) => __awaiter(void 0, void 0, void 0, function* () {
+    const { limit, page, skip } = paginationHelper_1.paginationHelpers.calculatePagination(options);
+    // console.log(authUser);
+    if (!filters.academicSemesterId) {
+        const currentAcademicSemester = yield prisma_1.prisma.academicSemester.findFirst({
+            where: {
+                isCurrent: true,
+            },
+        });
+        if (currentAcademicSemester) {
+            filters.academicSemesterId = currentAcademicSemester.id;
+        }
+    }
+    const offeredCourseSections = yield prisma_1.prisma.studentSemesterRegistrationCourse.findMany({
+        where: {
+            offeredCourse: {
+                course: {
+                    id: filters.courseId,
+                },
+            },
+            offeredCourseSection: {
+                offeredCourse: {
+                    semesterRegistration: {
+                        academicSemester: {
+                            id: filters.academicSemesterId,
+                        },
+                    },
+                },
+                id: filters.offeredCourseSectionId,
+            },
+        },
+        include: {
+            student: true,
+        },
+        take: limit,
+        skip,
+    });
+    const students = offeredCourseSections.map(offeredCourseSection => offeredCourseSection.student);
+    const total = yield prisma_1.prisma.studentSemesterRegistrationCourse.count({
+        where: {
+            offeredCourse: {
+                course: {
+                    id: filters.courseId,
+                },
+            },
+            offeredCourseSection: {
+                offeredCourse: {
+                    semesterRegistration: {
+                        academicSemester: {
+                            id: filters.academicSemesterId,
+                        },
+                    },
+                },
+                id: filters.offeredCourseSectionId,
+            },
+        },
+    });
+    return {
+        meta: {
+            total,
+            page,
+            limit,
+        },
+        data: students,
+    };
 });
 // CREATE FACULTY FROM EVENT
 const createFacultyFromEvent = (event) => __awaiter(void 0, void 0, void 0, function* () {
@@ -289,6 +351,7 @@ exports.FacultyService = {
     assignCourses,
     removeCourses,
     myCourses,
+    getMyCourseStudents,
     createFacultyFromEvent,
     updateFacultyFromEvent,
     deleteFacultyFromEvent,

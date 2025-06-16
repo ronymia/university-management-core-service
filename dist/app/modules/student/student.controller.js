@@ -117,7 +117,8 @@ const mySemesterRegCourses = (0, catchAsync_1.default)((req, res) => __awaiter(v
 // GET MY COURSE SCHEDULES
 const myCourseSchedules = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _c;
-    const authUserId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.id;
+    const authUserId = (_c = req.user) === null || _c === void 0 ? void 0 : _c.userId;
+    // console.log({ first: req.user });
     const filterRequest = (0, pick_1.default)(req.query, ['academicSemesterId', 'courseId']);
     const result = yield student_service_1.StudentService.myCourseSchedules(authUserId, filterRequest);
     // SEND RESPONSE

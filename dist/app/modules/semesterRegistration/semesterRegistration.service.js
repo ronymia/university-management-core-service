@@ -79,6 +79,7 @@ const getAllSemesterRegistration = (filters, paginationOptions) => __awaiter(voi
     const { page, skip, limit, sortBy, sortOrder } = paginationHelper_1.paginationHelpers.calculatePagination(paginationOptions);
     // FILTER
     const { searchTerm } = filters, filtersData = __rest(filters, ["searchTerm"]);
+    // console.log({ filtersData });
     // QUERY BUILDER
     const andCondition = [];
     // SEARCH IN FIELD
@@ -99,6 +100,13 @@ const getAllSemesterRegistration = (filters, paginationOptions) => __awaiter(voi
                 // Convert minCredit/maxCredit to number
                 if (semesterRegistration_constant_1.semesterRegistrationNumericFilterableFields.includes(field)) {
                     return { [field]: Number(value) };
+                }
+                if (Array.isArray(value)) {
+                    return {
+                        [field]: {
+                            in: value,
+                        },
+                    };
                 }
                 // Keep status/code/startDate/endDate as-is
                 return { [field]: value };
@@ -354,6 +362,7 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
                 isCurrent: false,
             },
         });
+        // UPDATE SEMESTER
         yield prismaTransactionClient.academicSemester.update({
             where: {
                 id: semesterRegistration.academicSemesterId,
@@ -362,6 +371,7 @@ const startNewSemester = (id) => __awaiter(void 0, void 0, void 0, function* () 
                 isCurrent: true,
             },
         });
+        // CREATE STUDENT SEMESTER PAYMENT
         const studentSemesterRegistrations = yield prisma_1.prisma.studentSemesterRegistration.findMany({
             where: {
                 semesterRegistration: {
@@ -491,7 +501,7 @@ const getMySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0
             studentId: authUserId,
         },
     });
-    console.log({ student });
+    // console.log({ student });
     const semesterRegistration = yield prisma_1.prisma.semesterRegistration.findFirst({
         where: {
             status: {
@@ -534,7 +544,7 @@ const getMySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0
             offeredCourseSection: true,
         },
     });
-    console.log({ studentCurrentSemesterTakenCourse });
+    // console.log({ studentCurrentSemesterTakenCourse });
     const offeredCourse = yield prisma_1.prisma.offeredCourse.findMany({
         where: {
             semesterRegistration: {
@@ -569,9 +579,9 @@ const getMySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0
             },
         },
     });
-    //console.log("Offered course: ", offeredCourse)
+    // console.log('Offered course: ', offeredCourse);
     const availableCourses = semesterRegistration_utils_1.SemesterRegistrationUtils.getAvailableCourses(offeredCourse, studentCompletedCourse, studentCurrentSemesterTakenCourse);
-    console.log({ availableCourses });
+    // console.log({ availableCourses });
     return availableCourses;
 });
 // EXPORT

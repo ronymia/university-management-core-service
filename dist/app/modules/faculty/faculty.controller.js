@@ -116,16 +116,32 @@ const removeCourses = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
 }));
 // MY COURSES
 const myCourses = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const authUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.id;
+    const authUser = req.user;
     const filters = (0, pick_1.default)(req.query, ['academicSemesterId', 'courseId']);
-    const result = yield faculty_service_1.FacultyService.myCourses(authUserId, filters);
+    const result = yield faculty_service_1.FacultyService.myCourses(authUser, filters);
     // SEND RESPONSE
     (0, sendResponse_1.default)(res, {
         statusCode: http_status_1.default.OK,
         success: true,
         message: 'Courses fetched successfully!',
         data: result,
+    });
+}));
+const getMyCourseStudents = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = req.user;
+    const filters = (0, pick_1.default)(req.query, [
+        'academicSemesterId',
+        'courseId',
+        'offeredCourseSectionId',
+    ]);
+    const options = (0, pick_1.default)(req.query, ['limit', 'page']);
+    const result = yield faculty_service_1.FacultyService.getMyCourseStudents(filters, options, user);
+    (0, sendResponse_1.default)(res, {
+        statusCode: http_status_1.default.OK,
+        success: true,
+        message: 'Faculty course students fetched successfully',
+        meta: result.meta,
+        data: result.data,
     });
 }));
 // EXPORT
@@ -138,4 +154,5 @@ exports.FacultyController = {
     assignCourses,
     removeCourses,
     myCourses,
+    getMyCourseStudents,
 };

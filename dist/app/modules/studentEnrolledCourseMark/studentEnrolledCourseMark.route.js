@@ -18,9 +18,9 @@ router
     .route('/:id')
     .get((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.FACULTY), studentEnrolledCourseMark_controller_1.StudentEnrolledCourseMarkController.getSingleStudentEnrolledCourseMark);
 router
-    .route('/update-mark')
+    .route('/update-marks')
     .patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.FACULTY), (0, validateRequest_1.default)(studentEnrolledCourseMark_validation_1.StudentEnrolledCourseMarkValidation.updateStudentEnrolledCourseMarkZodSchema), studentEnrolledCourseMark_controller_1.StudentEnrolledCourseMarkController.updateStudentEnrolledCourseMark);
-router.route('/update-final-mark').patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.FACULTY), 
+router.route('/update-final-marks').patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.FACULTY), 
 // validateRequest(
 //   StudentEnrolledCourseMarkValidation.updateStudentEnrolledCourseMarkZodSchema
 // ),

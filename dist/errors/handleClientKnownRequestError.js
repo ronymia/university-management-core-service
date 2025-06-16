@@ -5,9 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const http_status_1 = __importDefault(require("http-status"));
 const handleClientKnownRequestError = (error) => {
-    console.log({
-        handleClientKnownRequestError: error.meta,
-    });
+    // console.log({
+    //   handleClientKnownRequestError: error.meta,
+    // });
     const statusCode = http_status_1.default.BAD_REQUEST;
     const message = error.message.trim().split('\n');
     const errors = [

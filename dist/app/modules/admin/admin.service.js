@@ -92,7 +92,7 @@ const getAllAdmins = (filters, paginationOptions) => __awaiter(void 0, void 0, v
 });
 // UPDATE ADMIN
 const updateAdmin = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(payload);
+    // console.log(payload);
     const isExist = yield prisma_1.prisma.admin.findUnique({
         where: { id },
     });

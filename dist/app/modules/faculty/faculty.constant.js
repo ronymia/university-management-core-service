@@ -20,6 +20,8 @@ exports.facultyFilterableFields = [
     'contactNo',
     'bloodGroup',
     'gender',
+    'academicFacultyId',
+    'academicDepartmentId',
 ];
 exports.facultySearchableFields = [
     'firstName',

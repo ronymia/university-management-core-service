@@ -157,6 +157,7 @@ const myCourses = (authUserId, filters) => __awaiter(void 0, void 0, void 0, fun
     if (!studentEnrolledCourses) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'No courses found for the student');
     }
+    // console.log({ studentEnrolledCourses });
     return studentEnrolledCourses;
 });
 const mySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0, function* () {
@@ -242,6 +243,7 @@ const mySemesterRegCourses = (authUserId) => __awaiter(void 0, void 0, void 0, f
 });
 // MY COURSE SCHEDULES
 const myCourseSchedules = (authUserId, filters) => __awaiter(void 0, void 0, void 0, function* () {
+    // console.log({ authUserId });
     if (!filters.academicSemesterId) {
         const getCurrentAcademicSemester = yield prisma_1.prisma.academicSemester.findFirst({
             where: {
@@ -251,9 +253,11 @@ const myCourseSchedules = (authUserId, filters) => __awaiter(void 0, void 0, voi
         //
         filters.academicSemesterId = getCurrentAcademicSemester === null || getCurrentAcademicSemester === void 0 ? void 0 : getCurrentAcademicSemester.id;
     }
+    // console.log({ filters });
     const studentEnrolledCourses = yield myCourses(authUserId, filters);
-    console.log({ first: studentEnrolledCourses });
+    // console.log({ first: studentEnrolledCourses });
     const studentEnrolledCourseIds = studentEnrolledCourses.map((course) => course.courseId);
+    // console.log({ studentEnrolledCourseIds });
     const result = yield prisma_1.prisma.studentSemesterRegistrationCourse.findMany({
         where: {
             student: {
@@ -265,8 +269,10 @@ const myCourseSchedules = (authUserId, filters) => __awaiter(void 0, void 0, voi
                 },
             },
             offeredCourse: {
-                id: {
-                    in: studentEnrolledCourseIds,
+                course: {
+                    id: {
+                        in: studentEnrolledCourseIds,
+                    },
                 },
             },
         },
