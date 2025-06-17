@@ -104,6 +104,11 @@ const getAllAcademicSemesters = (filters, paginationOptions) => __awaiter(void 0
     });
     // GET TOTAL COUNT
     const totalCount = yield prisma_1.prisma.academicSemester.count();
+    // GET TOTAL COUNT (based on same filters!)
+    const paginationTotal = yield prisma_1.prisma.academicSemester.count({
+        where: whereCondition,
+    });
+    const totalPages = Math.ceil(totalCount / limit);
     // PUBLISH ON REDIS
     if (result.length > 0) {
         yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_GET_ALL, JSON.stringify(result));
@@ -113,7 +118,10 @@ const getAllAcademicSemesters = (filters, paginationOptions) => __awaiter(void 0
         meta: {
             page,
             limit,
+            skip,
             total: totalCount,
+            totalPages,
+            paginationTotal,
         },
         data: result,
     };

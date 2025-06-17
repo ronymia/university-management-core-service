@@ -100,12 +100,20 @@ const getAllStudentEnrolledCourse = (filterRequest, paginationOptions) => __awai
     });
     // GET TOTAL COUNT
     const total = yield prisma_1.prisma.studentEnrolledCourse.count();
+    // GET TOTAL COUNT (based on same filters!)
+    const paginationTotal = yield prisma_1.prisma.studentEnrolledCourse.count({
+        where: whereCondition,
+    });
+    const totalPages = Math.ceil(total / limit);
     // RETURN
     return {
         meta: {
             page,
             limit,
+            skip,
             total,
+            totalPages,
+            paginationTotal,
         },
         data: result,
     };

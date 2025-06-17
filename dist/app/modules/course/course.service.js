@@ -136,12 +136,20 @@ const getAllCourse = (filters, paginationOptions) => __awaiter(void 0, void 0, v
     });
     // GET TOTAL COUNT
     const total = yield prisma_1.prisma.course.count();
+    // GET TOTAL COUNT (based on same filters!)
+    const paginationTotal = yield prisma_1.prisma.course.count({
+        where: whereCondition,
+    });
+    const totalPages = Math.ceil(total / limit);
     // RETURN
     return {
         meta: {
             page,
             limit,
+            skip,
             total,
+            totalPages,
+            paginationTotal,
         },
         data: result,
     };

@@ -102,13 +102,21 @@ const getAllOfferedCourseClassSchedules = (filters, paginationOptions) => __awai
     const total = yield prisma_1.prisma.offeredCourseClassSchedule.count({
         where: whereCondition,
     });
+    // GET TOTAL COUNT (based on same filters!)
+    const paginationTotal = yield prisma_1.prisma.offeredCourseClassSchedule.count({
+        where: whereCondition,
+    });
+    const totalPages = Math.ceil(total / limit);
     // RETURN
     return {
         data: result,
         meta: {
-            total,
             page,
             limit,
+            skip,
+            total,
+            totalPages,
+            paginationTotal,
         },
     };
 });

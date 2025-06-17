@@ -113,12 +113,20 @@ const getAllAcademicDepartments = (filters, paginationOptions) => __awaiter(void
     });
     // GET TOTAL COUNT
     const totalCount = yield prisma_1.prisma.academicDepartment.count();
+    // GET TOTAL COUNT (based on same filters!)
+    const paginationTotal = yield prisma_1.prisma.academicDepartment.count({
+        where: whereCondition,
+    });
+    const totalPages = Math.ceil(totalCount / limit);
     // RETURN
     return {
         meta: {
             page,
             limit,
+            skip,
             total: totalCount,
+            totalPages,
+            paginationTotal,
         },
         data: result,
     };
