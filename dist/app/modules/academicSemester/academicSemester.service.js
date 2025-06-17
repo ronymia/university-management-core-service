@@ -105,9 +105,7 @@ const getAllAcademicSemesters = (filters, paginationOptions) => __awaiter(void 0
     // GET TOTAL COUNT
     const totalCount = yield prisma_1.prisma.academicSemester.count();
     // GET TOTAL COUNT (based on same filters!)
-    const paginationTotal = yield prisma_1.prisma.academicSemester.count({
-        where: whereCondition,
-    });
+    const paginationTotal = result === null || result === void 0 ? void 0 : result.length;
     const totalPages = Math.ceil(totalCount / limit);
     // PUBLISH ON REDIS
     if (result.length > 0) {

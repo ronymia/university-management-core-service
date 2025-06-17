@@ -92,9 +92,7 @@ const getAllStudents = (filters, paginationOptions) => __awaiter(void 0, void 0,
     });
     const total = yield prisma_1.prisma.student.count();
     // GET TOTAL COUNT (based on same filters!)
-    const paginationTotal = yield prisma_1.prisma.student.count({
-        where: whereCondition,
-    });
+    const paginationTotal = result === null || result === void 0 ? void 0 : result.length;
     const totalPages = Math.ceil(total / limit);
     return {
         meta: {

@@ -124,9 +124,7 @@ const getAllRooms = (filters, paginationOptions) => __awaiter(void 0, void 0, vo
     // GET TOTAL COUNT
     const total = yield prisma_1.prisma.room.count();
     // GET TOTAL COUNT (based on same filters!)
-    const paginationTotal = yield prisma_1.prisma.room.count({
-        where: whereCondition,
-    });
+    const paginationTotal = result === null || result === void 0 ? void 0 : result.length;
     const totalPages = Math.ceil(total / limit);
     // RETURN
     return {

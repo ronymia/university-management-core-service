@@ -83,9 +83,7 @@ const getAllAdmins = (filters, paginationOptions) => __awaiter(void 0, void 0, v
     // META
     const totalCount = yield prisma_1.prisma.admin.count();
     // GET TOTAL COUNT (based on same filters!)
-    const paginationTotal = yield prisma_1.prisma.admin.count({
-        where: whereCondition,
-    });
+    const paginationTotal = result === null || result === void 0 ? void 0 : result.length;
     const totalPages = Math.ceil(totalCount / limit);
     return {
         meta: {
