@@ -90,6 +90,9 @@ const getAllBuildings = (filters, paginationOptions) => __awaiter(void 0, void 0
             [sortBy]: sortOrder,
         },
         where: whereCondition,
+        include: {
+            rooms: true,
+        },
     });
     // GET TOTAL COUNT
     const total = yield prisma_1.prisma.building.count();

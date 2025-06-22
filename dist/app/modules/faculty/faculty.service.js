@@ -62,12 +62,10 @@ const getAllFaculties = (filters, paginationOptions) => __awaiter(void 0, void 0
     }
     // field Filtering
     if (Object.keys(filtersData).length) {
-        andConditions.push({
-            AND: Object.entries(filtersData).map(([field, value]) => ({
-                [field]: {
-                    equals: value,
-                },
-            })),
+        Object.entries(filtersData).forEach(([field, value]) => {
+            andConditions.push({
+                [field]: { equals: value },
+            });
         });
     }
     const whereCondition = andConditions.length

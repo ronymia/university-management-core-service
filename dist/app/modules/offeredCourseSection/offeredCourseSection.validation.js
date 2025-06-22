@@ -8,6 +8,18 @@ const dateTime_1 = require("../../../shared/dateTime");
 const createOfferedCourseSectionZodValidation = zod_1.z.object({
     body: zod_1.z
         .object({
+        semesterRegistrationId: zod_1.z
+            .string({
+            required_error: 'Semester Registration field is required',
+            invalid_type_error: 'Semester Registration Id must be string',
+        })
+            .min(1, 'Semester Registration is required'),
+        offeredCourseId: zod_1.z
+            .string({
+            required_error: 'offeredCourseId field is required',
+            invalid_type_error: 'Offered Course Id must be string',
+        })
+            .min(1, 'Offered Course Id is required'),
         title: zod_1.z
             .string({
             required_error: 'title field is required',
@@ -22,20 +34,15 @@ const createOfferedCourseSectionZodValidation = zod_1.z.object({
             .nonnegative({
             message: 'Max Capacity must be greater than or equal to 0',
         }),
-        offeredCourseId: zod_1.z
-            .string({
-            required_error: 'offeredCourseId field is required',
-            invalid_type_error: 'Offered Course Id must be string',
-        })
-            .min(1, 'Offered Course Id is required'),
         classSchedules: zod_1.z.array(zod_1.z.object({
+            id: zod_1.z
+                .string({
+                required_error: 'Id field is required',
+                invalid_type_error: 'Id must be string',
+            })
+                .optional(),
             dayOfWeek: zod_1.z.enum(Object.values(client_1.WeekDays), {
                 required_error: 'dayOfWeek field is required',
-                // errorMap: () => {
-                //   return {
-                //     message: `dayOfWeek must be one of the them ${weekDays.join(', ')}`,
-                //   };
-                // },
                 invalid_type_error: `dayOfWeek must be one of the them ${Object.values(client_1.WeekDays).join(', ')}`,
             }),
             startTime: zod_1.z
@@ -83,6 +90,18 @@ const createOfferedCourseSectionZodValidation = zod_1.z.object({
 });
 const updateOfferedCourseSectionZodValidation = zod_1.z.object({
     body: zod_1.z.object({
+        semesterRegistrationId: zod_1.z
+            .string({
+            required_error: 'Semester Registration field is required',
+            invalid_type_error: 'Semester Registration Id must be string',
+        })
+            .min(1, 'Semester Registration is required'),
+        offeredCourseId: zod_1.z
+            .string({
+            required_error: 'offeredCourseId field is required',
+            invalid_type_error: 'Offered Course Id must be string',
+        })
+            .min(1, 'Offered Course Id is required'),
         title: zod_1.z
             .string({
             required_error: 'title field is required',
@@ -97,12 +116,6 @@ const updateOfferedCourseSectionZodValidation = zod_1.z.object({
             .nonnegative({
             message: 'Max Capacity must be greater than or equal to 0',
         }),
-        offeredCourseId: zod_1.z
-            .string({
-            required_error: 'offeredCourseId field is required',
-            invalid_type_error: 'Offered Course Id must be string',
-        })
-            .min(1, 'Offered Course Id is required'),
         // currentEnrolledStudent: z
         //   .number({
         //     required_error: 'currentEnrolledStudent field is required',

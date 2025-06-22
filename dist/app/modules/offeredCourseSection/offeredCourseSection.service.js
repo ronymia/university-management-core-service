@@ -46,7 +46,7 @@ const createOfferedCourseSection = (payload) => __awaiter(void 0, void 0, void 0
     }
     const getOfferedCourseSection = yield prisma_1.prisma.offeredCourseSection.findFirst({
         where: {
-            SemesterRegistrationId: getOfferedCourse.semesterRegistrationId,
+            semesterRegistrationId: getOfferedCourse.semesterRegistrationId,
             title: offeredCourseSectionPayload.title,
         },
     });
@@ -61,7 +61,7 @@ const createOfferedCourseSection = (payload) => __awaiter(void 0, void 0, void 0
         // CHECK AVAILABLE ROOM AND FACULTY
         // CREATE OFFERED COURSE SECTION
         const createdOfferedCourseSection = yield transactionClient.offeredCourseSection.create({
-            data: Object.assign(Object.assign({}, offeredCourseSectionPayload), { SemesterRegistrationId: getOfferedCourse.semesterRegistrationId }),
+            data: Object.assign(Object.assign({}, offeredCourseSectionPayload), { semesterRegistrationId: getOfferedCourse.semesterRegistrationId }),
         });
         // CREATE CLASS SCHEDULES
         const scheduleData = classSchedulesPayload.map((schedule) => (Object.assign(Object.assign({}, schedule), { offeredCourseSectionId: createdOfferedCourseSection.id, semesterRegistrationId: getOfferedCourse.semesterRegistrationId })));
@@ -71,9 +71,12 @@ const createOfferedCourseSection = (payload) => __awaiter(void 0, void 0, void 0
         return createdOfferedCourseSection;
     }));
     // PUBLISH ON REDIS
-    if (createdSection) {
-        yield redis_1.RedisClient.publish(offeredCourseSection_constant_1.EVENT_OFFERED_COURSE_SECTION_CREATED, JSON.stringify(createdSection));
-    }
+    // if (createdSection) {
+    //   await RedisClient.publish(
+    //     EVENT_OFFERED_COURSE_SECTION_CREATED,
+    //     JSON.stringify(createdSection)
+    //   );
+    // }
     // RETURN
     return createdSection;
 });
@@ -123,7 +126,12 @@ const getAllOfferedCourseSections = (filters, paginationOptions) => __awaiter(vo
                     academicDepartment: true,
                 },
             },
-            semesterRegistration: true,
+            semesterRegistration: {
+                include: {
+                    academicSemester: true,
+                    offeredCourseClassSchedules: true,
+                },
+            },
         },
     });
     // TOTAL COUNT
@@ -153,29 +161,45 @@ const getSingleOfferedCourseSection = (id) => __awaiter(void 0, void 0, void 0, 
         include: {
             offeredCourse: true,
             semesterRegistration: true,
+            offeredCourseClassSchedules: true,
         },
     });
     return result;
 });
 // UPDATE
 const updateOfferedCourseSection = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const { classSchedules } = payload, courseSection = __rest(payload, ["classSchedules"]);
+    console.log({ classSchedules, courseSection });
     const isExist = yield prisma_1.prisma.offeredCourseSection.findUnique({
         where: { id },
     });
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.PRECONDITION_FAILED, `Invalid ID ${id}`);
     }
-    // UPDATE
-    const result = yield prisma_1.prisma.offeredCourseSection.update({
-        where: { id },
-        data: payload,
-    });
+    const updateSectionAndSchedules = yield prisma_1.prisma.$transaction((transactionClient) => __awaiter(void 0, void 0, void 0, function* () {
+        // UPDATE COURSE SECTION
+        const updatedSection = yield transactionClient.offeredCourseSection.update({
+            where: { id },
+            data: courseSection,
+        });
+        // UPDATE CLASS SCHEDULE
+        yield (0, asyncForEach_1.default)(classSchedules, (schedule) => __awaiter(void 0, void 0, void 0, function* () {
+            yield transactionClient.offeredCourseClassSchedule.update({
+                where: { id: schedule.id },
+                data: schedule,
+            });
+        }));
+        return updatedSection;
+    }));
     // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(offeredCourseSection_constant_1.EVENT_OFFERED_COURSE_SECTION_UPDATED, JSON.stringify(result));
-    }
+    // if (result) {
+    //   await RedisClient.publish(
+    //     EVENT_OFFERED_COURSE_SECTION_UPDATED,
+    //     JSON.stringify(result)
+    //   );
+    // }
     // RETURN
-    return result;
+    return updateSectionAndSchedules;
 });
 // DELETE
 const deleteOfferedCourseSection = (id) => __awaiter(void 0, void 0, void 0, function* () {

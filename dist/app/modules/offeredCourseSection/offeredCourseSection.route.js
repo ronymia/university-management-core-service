@@ -96,7 +96,7 @@ router
  */
 router
     .route('/:id')
-    .patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), (0, validateRequest_1.default)(offeredCourseSection_validation_1.OfferedCourseSectionValidation.updateOfferedCourseSectionZodValidation), offeredCourseSection_controller_1.OfferedCourseSectionControllers.updateOfferedCourseSection);
+    .patch((0, auth_1.default)(user_1.ENUM_USER_ROLE.SUPER_ADMIN, user_1.ENUM_USER_ROLE.ADMIN), (0, validateRequest_1.default)(offeredCourseSection_validation_1.OfferedCourseSectionValidation.createOfferedCourseSectionZodValidation), offeredCourseSection_controller_1.OfferedCourseSectionControllers.updateOfferedCourseSection);
 /**
  * Delete an Offered Course Section
  * @param {string} id - The unique ID of the Offered Course Section
