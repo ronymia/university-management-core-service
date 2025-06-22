@@ -48,11 +48,11 @@ const updateOfferedCourseZodSchema = zod_1.z.object({
         })
             .nonempty({ message: 'Semester Registration Id is required' })
             .optional(),
-        courseIds: zod_1.z
-            .array(zod_1.z.string({
+        courseId: zod_1.z
+            .string({
             required_error: 'courseIds is required',
             invalid_type_error: 'Course Id must be string',
-        }))
+        })
             .min(1, 'At least one Course ID must be provided')
             .optional(),
     }),
