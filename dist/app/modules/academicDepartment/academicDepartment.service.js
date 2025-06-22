@@ -60,6 +60,7 @@ const getSingleAcademicDepartment = (id) => __awaiter(void 0, void 0, void 0, fu
         where: { id },
         include: {
             academicFaculty: true,
+            offeredCourses: true,
         },
     });
     // RETURN

@@ -156,23 +156,35 @@ const getSingleOfferedCourse = (id) => __awaiter(void 0, void 0, void 0, functio
 });
 // UPDATE
 const updateOfferedCourse = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const isExist = yield prisma_1.prisma.offeredCourse.findUnique({
-        where: { id },
-    });
+    const isExist = yield prisma_1.prisma.offeredCourse.findUnique({ where: { id } });
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.PRECONDITION_FAILED, `Invalid ID ${id}`);
     }
-    // UPDATE
-    const result = yield prisma_1.prisma.offeredCourse.update({
-        where: { id },
-        data: payload,
+    // 1. Delete existing offered courses
+    yield prisma_1.prisma.offeredCourse.deleteMany({ where: { id } });
+    // 2. Prepare new data
+    const newCourses = payload.courseIds.map(row => ({
+        courseId: row.courseId,
+        semesterRegistrationId: payload.semesterRegistrationId,
+        academicDepartmentId: payload.academicDepartmentId,
+    }));
+    // 3. Create new offered courses
+    const created = yield prisma_1.prisma.offeredCourse.createMany({
+        data: newCourses,
+        skipDuplicates: true, // optional
     });
-    // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(offeredCourse_constant_1.EVENT_OFFERED_COURSE_UPDATED, JSON.stringify(result));
+    // 4. (Optional) Fetch the newly created entries
+    const updatedCourses = yield prisma_1.prisma.offeredCourse.findMany({
+        where: {
+            semesterRegistrationId: payload.semesterRegistrationId,
+            academicDepartmentId: payload.academicDepartmentId,
+        },
+    });
+    // 5. Publish to Redis
+    if (created.count > 0) {
+        yield redis_1.RedisClient.publish(offeredCourse_constant_1.EVENT_OFFERED_COURSE_UPDATED, JSON.stringify(updatedCourses));
     }
-    // RETURN
-    return result;
+    return updatedCourses;
 });
 // DELETE
 const deleteOfferedCourse = (id) => __awaiter(void 0, void 0, void 0, function* () {
