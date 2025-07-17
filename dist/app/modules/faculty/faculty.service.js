@@ -212,7 +212,7 @@ const myCourses = (authUser, filter) => __awaiter(void 0, void 0, void 0, functi
             offeredCourseClassSchedules: {
                 some: {
                     faculty: {
-                        facultyId: authUser.userId,
+                        facultyId: (filter === null || filter === void 0 ? void 0 : filter.facultyId) || authUser.userId,
                     },
                 },
             },

@@ -117,7 +117,11 @@ const removeCourses = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, 
 // MY COURSES
 const myCourses = (0, catchAsync_1.default)((req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const authUser = req.user;
-    const filters = (0, pick_1.default)(req.query, ['academicSemesterId', 'courseId']);
+    const filters = (0, pick_1.default)(req.query, [
+        'academicSemesterId',
+        'courseId',
+        'facultyId',
+    ]);
     const result = yield faculty_service_1.FacultyService.myCourses(authUser, filters);
     // SEND RESPONSE
     (0, sendResponse_1.default)(res, {
