@@ -13,7 +13,6 @@ exports.StudentEnrolledCourseMarkService = void 0;
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../../../shared/prisma");
 const studentEnrolledCourseMark_utils_1 = require("./studentEnrolledCourseMark.utils");
-const redis_1 = require("../../../shared/redis");
 const studentEnrolledCourseMark_constant_1 = require("./studentEnrolledCourseMark.constant");
 // CREATE STUDENT ENROLLED COURSE MARK
 const createStudentEnrolledCourseDefaultMark = (prismaClient, // enforce type
@@ -70,18 +69,23 @@ const updateStudentEnrolledCourseMark = (payload) => __awaiter(void 0, void 0, v
     // GET GRADE FROM CALCULATE MARK FUNCTION
     // CHECK IF THE MARK IS VALID
     const { grade } = yield studentEnrolledCourseMark_utils_1.StudentEnrolledCourseMarkUtils.getGradeFromMark(marks);
-    // UPDATE
-    const updatedMark = yield prisma_1.prisma.studentEnrolledCourseMark.update({
-        where: { id: getStudentEnrolledCourseDefaultMark.id },
-        data: { marks, grade },
-    });
-    if (!updatedMark) {
-        throw new Error('Failed to update student enrolled course mark');
-    }
-    //  PUBLISH ON REDIS
-    if (updatedMark) {
-        yield redis_1.RedisClient.publish(studentEnrolledCourseMark_constant_1.EVENT_STUDENT_ENROLLED_COURSE_MARK_UPDATED, JSON.stringify(updatedMark));
-    }
+    // UPDATE WITH OUTBOX
+    const updatedMark = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const mark = yield tx.studentEnrolledCourseMark.update({
+            where: { id: getStudentEnrolledCourseDefaultMark.id },
+            data: { marks, grade },
+        });
+        if (!mark) {
+            throw new Error('Failed to update student enrolled course mark');
+        }
+        yield tx.outbox.create({
+            data: {
+                eventType: studentEnrolledCourseMark_constant_1.EVENT_STUDENT_ENROLLED_COURSE_MARK_UPDATED,
+                payload: JSON.stringify(mark),
+            },
+        });
+        return mark;
+    }));
     // RETURN TO THE CONTROLLER
     return updatedMark;
 });

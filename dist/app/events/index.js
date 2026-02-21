@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const admin_event_1 = __importDefault(require("../modules/admin/admin.event"));
 const faculty_event_1 = __importDefault(require("../modules/faculty/faculty.event"));
 const student_event_1 = __importDefault(require("../modules/student/student.event"));
+const outbox_poller_1 = require("./outbox.poller");
 const subscribeToEvents = () => __awaiter(void 0, void 0, void 0, function* () {
     // STUDENT
     yield (0, student_event_1.default)();
@@ -23,5 +24,7 @@ const subscribeToEvents = () => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, admin_event_1.default)();
     // FACULTY
     yield (0, faculty_event_1.default)();
+    // START OUTBOX POLLER
+    (0, outbox_poller_1.startOutboxPoller)();
 });
 exports.default = subscribeToEvents;

@@ -31,7 +31,6 @@ const prisma_1 = require("../../../shared/prisma");
 const offeredCourseSection_constant_1 = require("./offeredCourseSection.constant");
 const offerredCourseClassSchedule_utils_1 = require("../offeredCourseClassSchedule/offerredCourseClassSchedule.utils");
 const asyncForEach_1 = __importDefault(require("../../../shared/asyncForEach"));
-const redis_1 = require("../../../shared/redis");
 // CREATE
 const createOfferedCourseSection = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { classSchedules: classSchedulesPayload } = payload, offeredCourseSectionPayload = __rest(payload, ["classSchedules"]);
@@ -129,7 +128,15 @@ const getAllOfferedCourseSections = (filters, paginationOptions) => __awaiter(vo
             semesterRegistration: {
                 include: {
                     academicSemester: true,
-                    offeredCourseClassSchedules: true,
+                    offeredCourseClassSchedules: {
+                        include: {
+                            room: {
+                                include: {
+                                    building: true,
+                                },
+                            },
+                        },
+                    },
                 },
             },
         },
@@ -161,7 +168,15 @@ const getSingleOfferedCourseSection = (id) => __awaiter(void 0, void 0, void 0, 
         include: {
             offeredCourse: true,
             semesterRegistration: true,
-            offeredCourseClassSchedules: true,
+            offeredCourseClassSchedules: {
+                include: {
+                    room: {
+                        include: {
+                            building: true,
+                        },
+                    },
+                },
+            },
         },
     });
     return result;
@@ -182,11 +197,14 @@ const updateOfferedCourseSection = (id, payload) => __awaiter(void 0, void 0, vo
             where: { id },
             data: courseSection,
         });
+        // DELETE CLASS SCHEDULE
+        yield transactionClient.offeredCourseClassSchedule.deleteMany({
+            where: { offeredCourseSectionId: id },
+        });
         // UPDATE CLASS SCHEDULE
         yield (0, asyncForEach_1.default)(classSchedules, (schedule) => __awaiter(void 0, void 0, void 0, function* () {
-            yield transactionClient.offeredCourseClassSchedule.update({
-                where: { id: schedule.id },
-                data: schedule,
+            yield transactionClient.offeredCourseClassSchedule.create({
+                data: Object.assign(Object.assign({}, schedule), { offeredCourseSectionId: id, semesterRegistrationId: isExist.semesterRegistrationId }),
             });
         }));
         return updatedSection;
@@ -209,14 +227,19 @@ const deleteOfferedCourseSection = (id) => __awaiter(void 0, void 0, void 0, fun
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.PRECONDITION_FAILED, `Invalid ID ${id}`);
     }
-    // DELETE
-    const result = yield prisma_1.prisma.offeredCourseSection.delete({
-        where: { id },
-    });
-    // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(offeredCourseSection_constant_1.EVENT_OFFERED_COURSE_SECTION_DELETED, JSON.stringify(result));
-    }
+    // DELETE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deletedSection = yield tx.offeredCourseSection.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: offeredCourseSection_constant_1.EVENT_OFFERED_COURSE_SECTION_DELETED,
+                payload: JSON.stringify(deletedSection),
+            },
+        });
+        return deletedSection;
+    }));
     // RETURN
     return result;
 });

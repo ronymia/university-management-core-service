@@ -24,7 +24,6 @@ exports.StudentSemesterPaymentService = void 0;
 const prisma_1 = require("../../../shared/prisma");
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const studentSemesterPayment_constant_1 = require("./studentSemesterPayment.constant");
-const redis_1 = require("../../../shared/redis");
 // CREATE SEMESTER PAYMENT
 const createSemesterPayment = (prismaClient, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const getSemesterPayment = yield prismaClient.studentSemesterPayment.findFirst({
@@ -125,15 +124,20 @@ const updatedSemesterPayment = (id, payload) => __awaiter(void 0, void 0, void 0
     if (!isExist) {
         throw new Error('Student semester payment not found');
     }
-    // UPDATE
-    const updatedStudentSemesterPayment = yield prisma_1.prisma.studentSemesterPayment.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH ON REDIS
-    if (updatedStudentSemesterPayment) {
-        yield redis_1.RedisClient.publish(studentSemesterPayment_constant_1.EVENT_STUDENT_SEMESTER_PAYMENT_UPDATED, JSON.stringify(updatedStudentSemesterPayment));
-    }
+    // UPDATE WITH OUTBOX
+    const updatedStudentSemesterPayment = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentSemesterPayment.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentSemesterPayment_constant_1.EVENT_STUDENT_SEMESTER_PAYMENT_UPDATED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     // RETURN TO THE CONTROLLER
     return updatedStudentSemesterPayment;
 });
@@ -146,14 +150,19 @@ const deleteSemesterPayment = (id) => __awaiter(void 0, void 0, void 0, function
     if (!isExist) {
         throw new Error('Student semester payment not found');
     }
-    // DELETE
-    const deletedStudentSemesterPayment = yield prisma_1.prisma.studentSemesterPayment.delete({
-        where: { id },
-    });
-    // PUBLISH ON REDIS
-    if (deletedStudentSemesterPayment) {
-        yield redis_1.RedisClient.publish(studentSemesterPayment_constant_1.EVENT_STUDENT_SEMESTER_PAYMENT_DELETED, JSON.stringify(deletedStudentSemesterPayment));
-    }
+    // DELETE WITH OUTBOX
+    const deletedStudentSemesterPayment = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentSemesterPayment.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentSemesterPayment_constant_1.EVENT_STUDENT_SEMESTER_PAYMENT_DELETED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     // RETURN TO THE CONTROLLER
     return deletedStudentSemesterPayment;
 });

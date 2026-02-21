@@ -29,7 +29,6 @@ const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const prisma_1 = require("../../../shared/prisma");
 const course_constant_1 = require("./course.constant");
-const redis_1 = require("../../../shared/redis");
 // CREATE
 const createCourse = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { preRequisiteCourses } = payload, courseData = __rest(payload, ["preRequisiteCourses"]);
@@ -51,13 +50,9 @@ const createCourse = (payload) => __awaiter(void 0, void 0, void 0, function* ()
                 })),
             });
         }
-        // RETURN
-        return createdCourse;
-    }));
-    if (newCourse) {
-        const result = yield prisma_1.prisma.course.findUnique({
+        const result = yield transactionClient.course.findUnique({
             where: {
-                id: newCourse.id,
+                id: createdCourse.id,
             },
             include: {
                 preRequisite: {
@@ -72,11 +67,19 @@ const createCourse = (payload) => __awaiter(void 0, void 0, void 0, function* ()
                 },
             },
         });
-        // PUBLISH EVENT ON REDIS
         if (result) {
-            yield redis_1.RedisClient.publish(course_constant_1.EVENT_COURSE_CREATED, JSON.stringify(result));
+            yield transactionClient.outbox.create({
+                data: {
+                    eventType: course_constant_1.EVENT_COURSE_CREATED,
+                    payload: JSON.stringify(result),
+                },
+            });
         }
+        // RETURN
         return result;
+    }));
+    if (newCourse) {
+        return newCourse;
     }
     // RETURN
     throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Failed to create course');
@@ -177,7 +180,7 @@ const getCourseById = (id) => __awaiter(void 0, void 0, void 0, function* () {
 // UPDATE
 const updateCourse = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { preRequisiteCourses } = payload, courseData = __rest(payload, ["preRequisiteCourses"]);
-    yield prisma_1.prisma.$transaction((transactionClient) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield prisma_1.prisma.$transaction((transactionClient) => __awaiter(void 0, void 0, void 0, function* () {
         // UPDATE COURSE
         const updatedCourse = yield transactionClient.course.update({
             where: { id },
@@ -208,31 +211,35 @@ const updateCourse = (id, payload) => __awaiter(void 0, void 0, void 0, function
                 })),
             });
         }
+        const populatedResult = yield transactionClient.course.findUnique({
+            where: {
+                id,
+            },
+            include: {
+                preRequisite: {
+                    include: {
+                        preRequisite: true,
+                    },
+                },
+                preRequisiteFor: {
+                    include: {
+                        course: true,
+                    },
+                },
+            },
+        });
+        if (populatedResult) {
+            yield transactionClient.outbox.create({
+                data: {
+                    eventType: course_constant_1.EVENT_COURSE_UPDATED,
+                    payload: JSON.stringify(populatedResult),
+                },
+            });
+        }
+        return populatedResult;
     }));
-    const result = yield prisma_1.prisma.course.findUnique({
-        where: {
-            id,
-        },
-        include: {
-            preRequisite: {
-                include: {
-                    preRequisite: true,
-                },
-            },
-            preRequisiteFor: {
-                include: {
-                    course: true,
-                },
-            },
-        },
-    });
-    // RETURN
     if (!result) {
-        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Failed to create course');
-    }
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(course_constant_1.EVENT_COURSE_UPDATED, JSON.stringify(result));
+        throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, 'Failed to update course');
     }
     return result;
 });
@@ -249,18 +256,23 @@ const deleteCourse = (ids) => __awaiter(void 0, void 0, void 0, function* () {
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Course not found');
     }
-    // DELETE COURSES
-    const result = yield prisma_1.prisma.course.deleteMany({
-        where: {
-            id: {
-                in: ids,
+    // DELETE COURSES WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deletedCourses = yield tx.course.deleteMany({
+            where: {
+                id: {
+                    in: ids,
+                },
             },
-        },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(course_constant_1.EVENT_COURSE_DELETED, JSON.stringify(result));
-    }
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: course_constant_1.EVENT_COURSE_DELETED,
+                payload: JSON.stringify(isExist),
+            },
+        });
+        return deletedCourses;
+    }));
     return result;
 });
 // ASSIGN FACULTIES

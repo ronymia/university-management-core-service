@@ -29,21 +29,25 @@ const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const prisma_1 = require("../../../shared/prisma");
 const room_constant_1 = require("./room.constant");
-const redis_1 = require("../../../shared/redis");
-const createRoom = (payload) => {
-    const result = prisma_1.prisma.room.create({
-        data: payload,
-        include: {
-            building: true,
-        },
-    });
-    // PUBLISH ON REDIS
-    if (result) {
-        redis_1.RedisClient.publish(room_constant_1.EVENT_ROOM_CREATED, JSON.stringify(result));
-    }
+const createRoom = (payload) => __awaiter(void 0, void 0, void 0, function* () {
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const created = yield tx.room.create({
+            data: payload,
+            include: {
+                building: true,
+            },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: room_constant_1.EVENT_ROOM_CREATED,
+                payload: JSON.stringify(created),
+            },
+        });
+        return created;
+    }));
     // RETURN
     return result;
-};
+});
 const getSingleRoom = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield prisma_1.prisma.room.findUnique({
         where: { id },
@@ -148,18 +152,23 @@ const updateRoom = (id, payload) => __awaiter(void 0, void 0, void 0, function* 
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Room not found');
     }
-    // EXECUTE QUERY
-    const result = yield prisma_1.prisma.room.update({
-        where: { id },
-        data: payload,
-        include: {
-            building: true,
-        },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        redis_1.RedisClient.publish(room_constant_1.EVENT_ROOM_UPDATED, JSON.stringify(result));
-    }
+    // EXECUTE QUERY WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const updated = yield tx.room.update({
+            where: { id },
+            data: payload,
+            include: {
+                building: true,
+            },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: room_constant_1.EVENT_ROOM_UPDATED,
+                payload: JSON.stringify(updated),
+            },
+        });
+        return updated;
+    }));
     // RETURN
     return result;
 });
@@ -172,17 +181,22 @@ const deleteRoom = (id) => __awaiter(void 0, void 0, void 0, function* () {
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Room not found');
     }
-    // EXECUTE QUERY
-    const result = yield prisma_1.prisma.room.delete({
-        where: { id },
-        include: {
-            building: true,
-        },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        redis_1.RedisClient.publish(room_constant_1.EVENT_ROOM_DELETED, JSON.stringify(result));
-    }
+    // EXECUTE QUERY WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deleted = yield tx.room.delete({
+            where: { id },
+            include: {
+                building: true,
+            },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: room_constant_1.EVENT_ROOM_DELETED,
+                payload: JSON.stringify(deleted),
+            },
+        });
+        return deleted;
+    }));
     // RETURN
     return result;
 });

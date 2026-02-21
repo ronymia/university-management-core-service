@@ -11,7 +11,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.StudentSemesterRegistrationService = void 0;
 const prisma_1 = require("../../../shared/prisma");
-const redis_1 = require("../../../shared/redis");
 const studentSemesterRegistration_constant_1 = require("./studentSemesterRegistration.constant");
 const updateStudentSemesterRegistration = (id, payload) => __awaiter(void 0, void 0, void 0, function* () {
     // CHECK IF THE STUDENT SEMESTER REGISTRATION EXISTS
@@ -21,15 +20,20 @@ const updateStudentSemesterRegistration = (id, payload) => __awaiter(void 0, voi
     if (!existingStudentSemesterRegistration) {
         throw new Error('StudentSemesterRegistration not found');
     }
-    // CHECK IF THE STUDENT SEMESTER REGISTRATION IS ACTIVE
-    const updatedStudentSemesterRegistration = yield prisma_1.prisma.studentSemesterRegistration.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH ON REDIS
-    if (updatedStudentSemesterRegistration) {
-        yield redis_1.RedisClient.publish(studentSemesterRegistration_constant_1.EVENT_STUDENT_SEMESTER_REGISTRATION_UPDATED, JSON.stringify(updatedStudentSemesterRegistration));
-    }
+    // UPDATE WITH OUTBOX
+    const updatedStudentSemesterRegistration = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentSemesterRegistration.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentSemesterRegistration_constant_1.EVENT_STUDENT_SEMESTER_REGISTRATION_UPDATED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     return updatedStudentSemesterRegistration;
 });
 const deleteStudentSemesterRegistration = (id) => __awaiter(void 0, void 0, void 0, function* () {
@@ -40,14 +44,19 @@ const deleteStudentSemesterRegistration = (id) => __awaiter(void 0, void 0, void
     if (!existingStudentSemesterRegistration) {
         throw new Error('StudentSemesterRegistration not found');
     }
-    // CHECK IF THE STUDENT SEMESTER REGISTRATION IS ACTIVE
-    const deletedStudentSemesterRegistration = yield prisma_1.prisma.studentSemesterRegistration.delete({
-        where: { id },
-    });
-    // PUBLISH ON REDIS
-    if (deletedStudentSemesterRegistration) {
-        yield redis_1.RedisClient.publish(studentSemesterRegistration_constant_1.EVENT_STUDENT_SEMESTER_REGISTRATION_DELETED, JSON.stringify(deletedStudentSemesterRegistration));
-    }
+    // DELETE WITH OUTBOX
+    const deletedStudentSemesterRegistration = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentSemesterRegistration.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentSemesterRegistration_constant_1.EVENT_STUDENT_SEMESTER_REGISTRATION_DELETED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     return deletedStudentSemesterRegistration;
 });
 // EXPORT THE SERVICE

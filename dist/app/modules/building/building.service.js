@@ -29,15 +29,20 @@ const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const prisma_1 = require("../../../shared/prisma");
 const building_constant_1 = require("./building.constant");
-const redis_1 = require("../../../shared/redis");
 // CREATE BUILD
 const createBuilding = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield prisma_1.prisma.building.create({
-        data: payload,
-    });
-    if (result) {
-        yield redis_1.RedisClient.publish(building_constant_1.EVENT_BUILDING_CREATED, JSON.stringify(result));
-    }
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const created = yield tx.building.create({
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: building_constant_1.EVENT_BUILDING_CREATED,
+                payload: JSON.stringify(created),
+            },
+        });
+        return created;
+    }));
     // RETURN
     return result;
 });
@@ -121,15 +126,20 @@ const updateBuilding = (id, payload) => __awaiter(void 0, void 0, void 0, functi
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Building not found');
     }
-    // EXECUTE QUERY
-    const result = yield prisma_1.prisma.building.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(building_constant_1.EVENT_BUILDING_UPDATED, JSON.stringify(result));
-    }
+    // EXECUTE QUERY WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const updated = yield tx.building.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: building_constant_1.EVENT_BUILDING_UPDATED,
+                payload: JSON.stringify(updated),
+            },
+        });
+        return updated;
+    }));
     // RETURN
     return result;
 });
@@ -142,14 +152,19 @@ const deleteBuilding = (id) => __awaiter(void 0, void 0, void 0, function* () {
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Building not found');
     }
-    // EXECUTE QUERY
-    const result = yield prisma_1.prisma.building.delete({
-        where: { id },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(building_constant_1.EVENT_BUILDING_DELETED, JSON.stringify(result));
-    }
+    // EXECUTE QUERY WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deleted = yield tx.building.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: building_constant_1.EVENT_BUILDING_DELETED,
+                payload: JSON.stringify(deleted),
+            },
+        });
+        return deleted;
+    }));
     // RETURN
     return result;
 });

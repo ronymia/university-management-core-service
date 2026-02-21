@@ -29,7 +29,6 @@ const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const prisma_1 = require("../../../shared/prisma");
 const academicDepartment_constant_1 = require("./academicDepartment.constant");
-const redis_1 = require("../../../shared/redis");
 // CREATE ACADEMIC DEPARTMENT
 const createAcademicDepartment = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     // VALIDATE ACADEMIC FACULTY ID EXISTS
@@ -40,17 +39,22 @@ const createAcademicDepartment = (payload) => __awaiter(void 0, void 0, void 0, 
     if (!facultyExists) {
         throw new ApiError_1.default(http_status_1.default.PRECONDITION_FAILED, 'Invalid academicFacultyId');
     }
-    // CREATE ACADEMIC DEPARTMENT
-    const result = yield prisma_1.prisma.academicDepartment.create({
-        data: payload,
-        include: {
-            academicFaculty: true,
-        },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_CREATED, JSON.stringify(result));
-    }
+    // CREATE ACADEMIC DEPARTMENT WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const created = yield tx.academicDepartment.create({
+            data: payload,
+            include: {
+                academicFaculty: true,
+            },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_CREATED,
+                payload: JSON.stringify(created),
+            },
+        });
+        return created;
+    }));
     // RETURN
     return result;
 });
@@ -147,15 +151,20 @@ const updateAcademicDepartment = (id, payload) => __awaiter(void 0, void 0, void
     if (!facultyExists) {
         throw new ApiError_1.default(http_status_1.default.PRECONDITION_FAILED, 'Invalid academicFacultyId');
     }
-    // UPDATE ON DATABASE
-    const result = yield prisma_1.prisma.academicDepartment.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_UPDATED, JSON.stringify(result));
-    }
+    // UPDATE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const updated = yield tx.academicDepartment.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_UPDATED,
+                payload: JSON.stringify(updated),
+            },
+        });
+        return updated;
+    }));
     // RETURN
     return result;
 });
@@ -168,14 +177,19 @@ const deleteAcademicDepartment = (id) => __awaiter(void 0, void 0, void 0, funct
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.NOT_FOUND, 'Academic Department not found');
     }
-    // DELETE ON DATABASE
-    const result = yield prisma_1.prisma.academicDepartment.delete({
-        where: { id },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_DELETED, JSON.stringify(result));
-    }
+    // DELETE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deleted = yield tx.academicDepartment.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicDepartment_constant_1.EVENT_ACADEMIC_DEPARTMENT_DELETED,
+                payload: JSON.stringify(deleted),
+            },
+        });
+        return deleted;
+    }));
     // RETURN
     return result;
 });

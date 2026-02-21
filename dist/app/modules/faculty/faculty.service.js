@@ -41,7 +41,16 @@ const createFaculty = (payload) => __awaiter(void 0, void 0, void 0, function* (
 });
 const getSingleFaculty = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const result = yield prisma_1.prisma.faculty.findUnique({
-        where: { id },
+        where: { facultyId: id },
+        include: {
+            academicDepartment: true,
+            academicFaculty: true,
+            courses: {
+                include: {
+                    course: true,
+                },
+            },
+        },
     });
     return result;
 });

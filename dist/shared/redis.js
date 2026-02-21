@@ -53,9 +53,18 @@ redisClient.on('error', err => {
     logger_1.errorLogger.error('Redis client error', err);
 });
 const connect = () => __awaiter(void 0, void 0, void 0, function* () {
-    yield redisClient.connect();
-    yield redisPubClient.connect();
-    yield redisSubClient.connect();
+    try {
+        yield Promise.all([
+            redisClient.connect(),
+            redisPubClient.connect(),
+            redisSubClient.connect(),
+        ]);
+        const pong = yield redisClient.ping();
+        logger_1.logger.info('Redis client connected', pong);
+    }
+    catch (error) {
+        logger_1.errorLogger.error('Redis client error', error);
+    }
 });
 const set = (key, value, options) => __awaiter(void 0, void 0, void 0, function* () {
     yield redisClient.set(key, value, options);

@@ -24,7 +24,6 @@ exports.StudentEnrolledCourseService = void 0;
 const prisma_1 = require("../../../shared/prisma");
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const studentEnrolledCourse_constant_1 = require("./studentEnrolledCourse.constant");
-const redis_1 = require("../../../shared/redis");
 const createStudentEnrolledCourse = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     // CHECK IF THE STUDENT ENROLLED COURSE EXISTS
     const isExist = yield prisma_1.prisma.studentEnrolledCourse.findUnique({
@@ -33,17 +32,22 @@ const createStudentEnrolledCourse = (payload) => __awaiter(void 0, void 0, void 
     if (isExist) {
         throw new Error('Student enrolled course already exists');
     }
-    // CREATE
-    const createdStudentEnrolledCourse = yield prisma_1.prisma.studentEnrolledCourse.create({
-        data: payload,
-    });
-    if (!createdStudentEnrolledCourse) {
-        throw new Error('Failed to create student enrolled course');
-    }
-    // PUBLISH ON REDIS
-    if (createdStudentEnrolledCourse) {
-        yield redis_1.RedisClient.publish(studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_CREATED, JSON.stringify(createdStudentEnrolledCourse));
-    }
+    // CREATE WITH OUTBOX PATTERN IN TRANSACTION
+    const createdStudentEnrolledCourse = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentEnrolledCourse.create({
+            data: payload,
+        });
+        if (!result) {
+            throw new Error('Failed to create student enrolled course');
+        }
+        yield tx.outbox.create({
+            data: {
+                eventType: studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_CREATED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     // RETURN TO THE CONTROLLER
     return createdStudentEnrolledCourse;
 });
@@ -125,15 +129,20 @@ const updateStudentEnrolledCourse = (id, payload) => __awaiter(void 0, void 0, v
     if (!isExist) {
         throw new Error('Student enrolled course not found');
     }
-    // UPDATE
-    const updatedStudentEnrolledCourse = yield prisma_1.prisma.studentEnrolledCourse.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH ON REDIS
-    if (updatedStudentEnrolledCourse) {
-        yield redis_1.RedisClient.publish(studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_UPDATED, JSON.stringify(updatedStudentEnrolledCourse));
-    }
+    // UPDATE WITH OUTBOX
+    const updatedStudentEnrolledCourse = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentEnrolledCourse.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_UPDATED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     // RETURN TO THE CONTROLLER
     return updatedStudentEnrolledCourse;
 });
@@ -146,14 +155,19 @@ const deleteStudentEnrolledCourse = (id) => __awaiter(void 0, void 0, void 0, fu
     if (!isExist) {
         throw new Error('Student enrolled course not found');
     }
-    // DELETE
-    const deletedStudentEnrolledCourse = yield prisma_1.prisma.studentEnrolledCourse.delete({
-        where: { id },
-    });
-    // PUBLISH ON REDIS
-    if (deletedStudentEnrolledCourse) {
-        yield redis_1.RedisClient.publish(studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_DELETED, JSON.stringify(deletedStudentEnrolledCourse));
-    }
+    // DELETE WITH OUTBOX
+    const deletedStudentEnrolledCourse = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const result = yield tx.studentEnrolledCourse.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: studentEnrolledCourse_constant_1.EVENT_STUDENT_ENROLLED_COURSE_DELETED,
+                payload: JSON.stringify(result),
+            },
+        });
+        return result;
+    }));
     // RETURN TO THE CONTROLLER
     return deletedStudentEnrolledCourse;
 });

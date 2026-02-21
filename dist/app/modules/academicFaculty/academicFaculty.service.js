@@ -29,18 +29,22 @@ const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const prisma_1 = require("../../../shared/prisma");
 const academicDepartment_constant_1 = require("../academicDepartment/academicDepartment.constant");
-const redis_1 = require("../../../shared/redis");
 const academicFaculty_constant_1 = require("./academicFaculty.constant");
 // CREATE ACADEMIC FACULTY
 const createAcademicFaculty = (payload) => __awaiter(void 0, void 0, void 0, function* () {
-    // CREATE ON DATABASE
-    const result = yield prisma_1.prisma.academicFaculty.create({
-        data: payload,
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_CREATED, JSON.stringify(result));
-    }
+    // CREATE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const createdFaculty = yield tx.academicFaculty.create({
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_CREATED,
+                payload: JSON.stringify(createdFaculty),
+            },
+        });
+        return createdFaculty;
+    }));
     // RETURN
     return result;
 });
@@ -134,15 +138,20 @@ const updateAcademicFaculty = (id, payload) => __awaiter(void 0, void 0, void 0,
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, `AcademicFaculty not found with id ${id}`);
     }
-    // UPDATE ON DATABASE
-    const result = yield prisma_1.prisma.academicFaculty.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_UPDATED, JSON.stringify(result));
-    }
+    // UPDATE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const updatedFaculty = yield tx.academicFaculty.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_UPDATED,
+                payload: JSON.stringify(updatedFaculty),
+            },
+        });
+        return updatedFaculty;
+    }));
     // RETURN
     return result;
 });
@@ -155,14 +164,19 @@ const deleteAcademicFaculty = (id) => __awaiter(void 0, void 0, void 0, function
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, `AcademicFaculty not found with id ${id}`);
     }
-    // DELETE ON DATABASE
-    const result = yield prisma_1.prisma.academicFaculty.delete({
-        where: { id },
-    });
-    // PUBLISH EVENT ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_DELETED, JSON.stringify(result));
-    }
+    // DELETE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deletedFaculty = yield tx.academicFaculty.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicFaculty_constant_1.EVENT_ACADEMIC_FACULTY_DELETED,
+                payload: JSON.stringify(deletedFaculty),
+            },
+        });
+        return deletedFaculty;
+    }));
     // RETURN
     return result;
 });

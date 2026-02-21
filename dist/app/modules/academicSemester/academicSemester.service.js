@@ -28,7 +28,6 @@ const http_status_1 = __importDefault(require("http-status"));
 const ApiError_1 = __importDefault(require("../../../errors/ApiError"));
 const paginationHelper_1 = require("../../../helpers/paginationHelper");
 const academicSemester_constant_1 = require("./academicSemester.constant");
-const redis_1 = require("../../../shared/redis");
 const prisma_1 = require("../../../shared/prisma");
 // CREATE ACADEMIC SEMESTER
 const createAcademicSemester = (payload) => __awaiter(void 0, void 0, void 0, function* () {
@@ -36,28 +35,40 @@ const createAcademicSemester = (payload) => __awaiter(void 0, void 0, void 0, fu
     if (academicSemester_constant_1.academicSemesterTitleCodeMapper[payload.title] !== payload.code) {
         throw new ApiError_1.default(http_status_1.default.UNPROCESSABLE_ENTITY, 'Invalid academic semester code');
     }
-    // CREATE SEMESTER
-    const result = yield prisma_1.prisma.academicSemester.create({
-        data: payload,
-    });
-    // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_CREATED, JSON.stringify(result));
-    }
+    // CREATE SEMESTER WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const created = yield tx.academicSemester.create({
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_CREATED,
+                payload: JSON.stringify(created),
+            },
+        });
+        return created;
+    }));
     // RETURN
     return result;
 });
 // GET ACADEMIC SEMESTER BY ID SINGLE
 const getSingleAcademicSemester = (id) => __awaiter(void 0, void 0, void 0, function* () {
-    const result = yield prisma_1.prisma.academicSemester.findUnique({
-        where: {
-            id: id,
-        },
-    });
-    // PUBLISH
-    if (result) {
-        yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_GET_BY_ID, JSON.stringify(result));
-    }
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const fetched = yield tx.academicSemester.findUnique({
+            where: {
+                id: id,
+            },
+        });
+        if (fetched) {
+            yield tx.outbox.create({
+                data: {
+                    eventType: academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_GET_BY_ID,
+                    payload: JSON.stringify(fetched),
+                },
+            });
+        }
+        return fetched;
+    }));
     // RETURN
     return result;
 });
@@ -93,24 +104,31 @@ const getAllAcademicSemesters = (filters, paginationOptions) => __awaiter(void 0
     const whereCondition = andConditions.length
         ? { AND: andConditions }
         : {};
-    // EXECUTE QUERY
-    const result = yield prisma_1.prisma.academicSemester.findMany({
-        skip,
-        take: limit,
-        orderBy: {
-            [sortBy]: sortOrder,
-        },
-        where: whereCondition,
-    });
+    // EXECUTE QUERY WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const fetched = yield tx.academicSemester.findMany({
+            skip,
+            take: limit,
+            orderBy: {
+                [sortBy]: sortOrder,
+            },
+            where: whereCondition,
+        });
+        if (fetched.length > 0) {
+            yield tx.outbox.create({
+                data: {
+                    eventType: academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_GET_ALL,
+                    payload: JSON.stringify(fetched),
+                },
+            });
+        }
+        return fetched;
+    }));
     // GET TOTAL COUNT
     const totalCount = yield prisma_1.prisma.academicSemester.count();
     // GET TOTAL COUNT (based on same filters!)
     const paginationTotal = result === null || result === void 0 ? void 0 : result.length;
     const totalPages = Math.ceil(totalCount / limit);
-    // PUBLISH ON REDIS
-    if (result.length > 0) {
-        yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_GET_ALL, JSON.stringify(result));
-    }
     // RETURN
     return {
         meta: {
@@ -140,15 +158,20 @@ const updateAcademicSemester = (id, payload) => __awaiter(void 0, void 0, void 0
         academicSemester_constant_1.academicSemesterTitleCodeMapper[payload.title] !== payload.code) {
         throw new ApiError_1.default(http_status_1.default.UNPROCESSABLE_ENTITY, 'Invalid academic semester code');
     }
-    // UPDATE ON DATABASE
-    const result = yield prisma_1.prisma.academicSemester.update({
-        where: { id },
-        data: payload,
-    });
-    // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_UPDATED, JSON.stringify(result));
-    }
+    // UPDATE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const updated = yield tx.academicSemester.update({
+            where: { id },
+            data: payload,
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_UPDATED,
+                payload: JSON.stringify(updated),
+            },
+        });
+        return updated;
+    }));
     // RETURN
     return result;
 });
@@ -162,14 +185,19 @@ const deleteAcademicSemester = (id) => __awaiter(void 0, void 0, void 0, functio
     if (!isExist) {
         throw new ApiError_1.default(http_status_1.default.BAD_REQUEST, `Academic Semester not found with ${id}`);
     }
-    // DELETE ON DATABASE
-    const result = yield prisma_1.prisma.academicSemester.delete({
-        where: { id },
-    });
-    // PUBLISH ON REDIS
-    if (result) {
-        yield redis_1.RedisClient.publish(academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_DELETED, JSON.stringify(result));
-    }
+    // DELETE ON DATABASE WITH OUTBOX
+    const result = yield prisma_1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const deleted = yield tx.academicSemester.delete({
+            where: { id },
+        });
+        yield tx.outbox.create({
+            data: {
+                eventType: academicSemester_constant_1.EVENT_ACADEMIC_SEMESTER_DELETED,
+                payload: JSON.stringify(deleted),
+            },
+        });
+        return deleted;
+    }));
     // RETURN
     return result;
 });
